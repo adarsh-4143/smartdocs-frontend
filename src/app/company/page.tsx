@@ -29,10 +29,11 @@ import {
   ShieldCheck,
   ExternalLink,
 } from "lucide-react";
+import { generateNextCode } from "@/lib/codeGenerator";
 
 export default function CompanyManagementPage() {
   const router = useRouter();
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(true);
 
   // Data state
   const [companies, setCompanies] = useState<Company[]>([]);
@@ -153,8 +154,9 @@ export default function CompanyManagementPage() {
   // Open modal for Create or Edit
   const handleOpenCreateModal = () => {
     setEditingCompany(null);
-    const randomCode = `CMP${Math.floor(100 + Math.random() * 900)}`;
-    setFormData({ ...initialFormState, companyCode: randomCode });
+    const existingCodes = companies.map((c) => c.companyCode);
+    const nextCode = generateNextCode("CMP", existingCodes, 3);
+    setFormData({ ...initialFormState, companyCode: nextCode });
     setActiveTab("basic");
     setIsFormModalOpen(true);
   };

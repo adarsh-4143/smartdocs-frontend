@@ -51,7 +51,12 @@ class ApiClient {
     } catch (error: any) {
       clearTimeout(timeoutId);
       if (error.name === "AbortError") {
-        throw new Error("Request timed out. Please check your network or backend server.");
+        throw new Error("Request timed out. Please check your backend server.");
+      }
+      if (error.message === "Failed to fetch" || error.name === "TypeError") {
+        throw new Error(
+          "Unable to connect to backend API server (http://localhost:5000). Please ensure the backend server is running."
+        );
       }
       throw error;
     }

@@ -75,6 +75,8 @@ import {
   FileCheck,
   FileWarning,
   Eye,
+  Move,
+  Layout,
 } from "lucide-react";
 
 // FontSize is now built-in to @tiptap/extension-text-style v3.x — no custom extension needed.
@@ -84,7 +86,7 @@ export default function TwoPanelTemplateBuilderPage() {
   const router = useRouter();
   const templateId = params?.templateId as string;
 
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(true);
   const [template, setTemplate] = useState<TemplateMaster | null>(null);
   const [contentRecord, setContentRecord] = useState<TemplateContentRecord | null>(null);
 
@@ -545,10 +547,23 @@ export default function TwoPanelTemplateBuilderPage() {
       .chain()
       .focus()
       .insertContent(
-        '<div class="page-break font-mono text-[10px] uppercase border-y border-dashed border-indigo-400 bg-indigo-50 text-indigo-700 py-1.5 px-3 text-center my-4 font-bold select-none" data-page-break="true">--- PAGE BREAK ---</div>'
+        '<p class="page-break font-mono text-[10px] uppercase border-y border-dashed border-indigo-400 bg-indigo-50 text-indigo-700 py-1.5 px-3 text-center my-4 font-bold select-none" data-page-break="true">--- PAGE BREAK ---</p><p></p>'
       )
       .run();
     showToast("success", "Page Break inserted!");
+  };
+
+  // Insert Free-Positioned Movable Container (Canva / Sejda Style)
+  const handleInsertMovableTextBlock = () => {
+    if (!editor) return;
+    editor
+      .chain()
+      .focus()
+      .insertContent(
+        '<p className="pdf-line p-3 my-3 bg-indigo-50/50 border border-indigo-200 rounded-lg shadow-sm" style="display:block; width: 100%; border: 1px dashed #6366f1; padding: 12px; background: #f5f3ff;"><strong>Click to edit free text block...</strong></p><p></p>'
+      )
+      .run();
+    showToast("success", "Free text box inserted!");
   };
 
   // Remove Header or Footer Image
@@ -1301,6 +1316,16 @@ export default function TwoPanelTemplateBuilderPage() {
                       >
                         <FilePlus className="w-3.5 h-3.5" />
                         <span>Page Break</span>
+                      </button>
+
+                      {/* Insert Canva / Sejda Style Movable Text Block */}
+                      <button
+                        onClick={handleInsertMovableTextBlock}
+                        className="px-2.5 py-1 rounded-lg bg-cyan-950/80 hover:bg-cyan-900 border border-cyan-500/40 text-cyan-300 text-xs font-semibold flex items-center gap-1.5 transition-colors"
+                        title="Insert Movable / Resizable Canva-style Text Block"
+                      >
+                        <Move className="w-3.5 h-3.5 text-cyan-400" />
+                        <span>Free Text Box</span>
                       </button>
 
                       {/* Toggle Dynamic Fields Panel */}

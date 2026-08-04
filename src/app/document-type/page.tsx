@@ -34,6 +34,7 @@ import {
   Archive,
   Ban,
 } from "lucide-react";
+import { generateNextCode } from "@/lib/codeGenerator";
 
 export default function DocumentTypeManagementPage() {
   const router = useRouter();
@@ -117,11 +118,12 @@ export default function DocumentTypeManagementPage() {
   // Open modal for Create or Edit
   const handleOpenCreateModal = () => {
     setEditingDocType(null);
-    const randomCode = `DT-CATEGORY-${Math.floor(10 + Math.random() * 90)}`;
+    const existingCodes = documentTypes.map((d) => d.documentTypeCode);
+    const nextCode = generateNextCode("DOC", existingCodes, 3);
     setFormData({
       ...initialFormState,
       companyId: companies.length > 0 ? companies[0].id : 1,
-      documentTypeCode: randomCode,
+      documentTypeCode: nextCode,
     });
     setIsFormModalOpen(true);
   };

@@ -112,7 +112,7 @@ function SectionDivider({ label }: { label: string }) {
 
 // ─── Main Page ───────────────────────────────────────────────────────────────
 export default function DocumentGenerationPage() {
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(true);
 
   // ── Toast ──────────────────────────────────────────────────────────────────
   const [toast, setToast] = useState<{ type: "success" | "error"; msg: string } | null>(null);
@@ -272,6 +272,16 @@ export default function DocumentGenerationPage() {
         const keys = extractPlaceholderKeys(content.content);
         setPlaceholderKeys(keys);
 
+        if (keys.length === 0) {
+          setResolveResult({
+            templateId: selectedTemplateId,
+            fields: [],
+            resolvedData: {},
+            missingFields: [],
+          });
+          setResolvedPreviewData({});
+        }
+
         // Group fields by dataSource
         const grouped: Record<string, DynamicField[]> = {};
         const unknown: string[] = [];
@@ -410,8 +420,14 @@ export default function DocumentGenerationPage() {
   // ─────────────────────────────────────────────────────────────────────────
   const handleGenerate = async () => {
     if (!selectedTemplateId) return;
-    if (!resolveResult || Object.keys(resolvedPreviewData).length === 0) {
-      showToast("error", "Please resolve the data first before generating.");
+
+    // If template requires 0 dynamic fields, build empty data object
+    const effectiveData = placeholderKeys.length === 0
+      ? {}
+      : resolvedPreviewData;
+
+    if (placeholderKeys.length > 0 && (!resolveResult || Object.keys(resolvedPreviewData).length === 0)) {
+      showToast("error", "Please click 'Preview & Resolve Data' first before generating.");
       return;
     }
     if (!documentName.trim()) {
@@ -426,7 +442,10 @@ export default function DocumentGenerationPage() {
       const doc = await generatedDocumentService.generateDocument({
         templateId: selectedTemplateId,
         documentName: documentName.trim(),
-        data: resolvedPreviewData,   // ← backend-resolved data, not frontend-reconstructed
+        employeeId: selectedEmployeeId ? Number(selectedEmployeeId) : undefined,
+        companyId: selectedCompanyId ? Number(selectedCompanyId) : undefined,
+        profileId: selectedProfileId ? Number(selectedProfileId) : undefined,
+        data: effectiveData,
       });
       setLastGenerated(doc);
       showToast("success", "Document generated successfully!");

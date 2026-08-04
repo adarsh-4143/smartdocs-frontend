@@ -39,10 +39,11 @@ import {
   Archive,
   Ban,
 } from "lucide-react";
+import { generateNextCode } from "@/lib/codeGenerator";
 
 export default function TemplateMasterManagementPage() {
   const router = useRouter();
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(true);
 
   // Data state
   const [templates, setTemplates] = useState<TemplateMaster[]>([]);
@@ -131,12 +132,14 @@ export default function TemplateMasterManagementPage() {
   // Open modal for Create or Edit
   const handleOpenCreateModal = () => {
     setEditingTemplate(null);
-    const randomCode = `TMP-STD-${Math.floor(100 + Math.random() * 900)}`;
+    const initialCompanyId = companies.length > 0 ? companies[0].id : 1;
+    const existingCodes = templates.map((t) => t.templateCode);
+    const nextCode = generateNextCode("TMP", existingCodes, 3);
     setFormData({
       ...initialFormState,
-      companyId: companies.length > 0 ? companies[0].id : 1,
+      companyId: initialCompanyId,
       documentTypeId: documentTypes.length > 0 ? documentTypes[0].id : 1,
-      templateCode: randomCode,
+      templateCode: nextCode,
     });
     setIsFormModalOpen(true);
   };
@@ -172,14 +175,10 @@ export default function TemplateMasterManagementPage() {
 
     try {
       if (editingTemplate) {
-        const updated = await templateMasterService.updateTemplate(editingTemplate.id, payload);
-        setTemplates((prev) =>
-          prev.map((t) => (t.id === editingTemplate.id ? { ...t, ...updated } : t))
-        );
+        await templateMasterService.updateTemplate(editingTemplate.id, payload);
         showToast("success", `Template "${payload.templateName || editingTemplate.templateName}" updated successfully!`);
       } else {
         const created = await templateMasterService.createTemplate(payload as CreateTemplateMasterDto);
-        setTemplates((prev) => [created, ...prev]);
         showToast("success", `Template "${created.templateName}" created successfully!`);
       }
 
@@ -685,7 +684,16 @@ export default function TemplateMasterManagementPage() {
                   <select
                     required
                     value={formData.companyId}
-                    onChange={(e) => setFormData({ ...formData, companyId: Number(e.target.value) })}
+                    onChange={(e) => {
+                      const newCompId = Number(e.target.value);
+                      if (!editingTemplate) {
+                        const existingCodes = templates.map((t) => t.templateCode);
+                        const nextCode = generateNextCode("TMP", existingCodes, 3);
+                        setFormData({ ...formData, companyId: newCompId, templateCode: nextCode });
+                      } else {
+                        setFormData({ ...formData, companyId: newCompId });
+                      }
+                    }}
                     className="w-full bg-[#141A2C] border border-[#202B44] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
                   >
                     {companies.map((c) => (

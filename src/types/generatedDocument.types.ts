@@ -31,6 +31,9 @@ export interface GeneratedDocument {
 export interface GenerateDocumentPayload {
   templateId: number;
   documentName: string;
+  employeeId?: number | null;
+  companyId?: number | null;
+  profileId?: number | null;
   data: Record<string, string>;
 }
 

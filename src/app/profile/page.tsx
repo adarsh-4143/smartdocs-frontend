@@ -33,6 +33,8 @@ import {
   Layers,
 } from "lucide-react";
 
+import { generateNextCode } from "@/lib/codeGenerator";
+
 export default function ProfileManagementPage() {
   const router = useRouter();
   const [collapsed, setCollapsed] = useState(false);
@@ -118,11 +120,12 @@ export default function ProfileManagementPage() {
   // Open modal for Create or Edit
   const handleOpenCreateModal = () => {
     setEditingProfile(null);
-    const randomCode = `PROF-POSITION-${Math.floor(10 + Math.random() * 90)}`;
+    const existingCodes = profiles.map((p) => p.profileCode);
+    const nextCode = generateNextCode("PRF", existingCodes, 3);
     setFormData({
       ...initialFormState,
       companyId: companies.length > 0 ? companies[0].id : 1,
-      profileCode: randomCode,
+      profileCode: nextCode,
     });
     setIsFormModalOpen(true);
   };
