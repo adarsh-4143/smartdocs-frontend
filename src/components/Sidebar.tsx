@@ -3,7 +3,7 @@
 import React from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import {
   LayoutDashboard,
   Building2,
@@ -16,6 +16,7 @@ import {
   ChevronLeft,
   ChevronRight,
   ShieldCheck,
+  LogOut,
 } from "lucide-react";
 import ThemeToggle from "./ThemeToggle";
 
@@ -25,7 +26,27 @@ interface SidebarProps {
 }
 
 export default function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
+  const router = useRouter();
   const pathname = usePathname();
+  const [adminName, setAdminName] = React.useState<string>("Admin");
+
+  React.useEffect(() => {
+    if (typeof window !== "undefined") {
+      const userStr = localStorage.getItem("adminUser");
+      if (userStr) {
+        try {
+          const userObj = JSON.parse(userStr);
+          if (userObj.username) setAdminName(userObj.username);
+        } catch (e) {}
+      }
+    }
+  }, []);
+
+  const handleLogout = () => {
+    localStorage.removeItem("adminToken");
+    localStorage.removeItem("adminUser");
+    router.push("/login");
+  };
 
   const navItems = [
     {
@@ -179,39 +200,46 @@ export default function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
         </nav>
       </div>
 
-      {/* Footer / System Info */}
+      {/* Footer / Admin Profile & Logout */}
       <div className="p-3 border-t border-[#1E2638]">
         {!collapsed ? (
-          <div className="bg-[#121726] p-3 rounded-xl border border-[#1E2638] flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full overflow-hidden border border-indigo-500/30 shrink-0">
-              <Image
-                src="/logo.png"
-                alt="DOCGEN Avatar"
-                width={32}
-                height={32}
-                className="w-full h-full object-cover"
-              />
+          <div className="bg-[#121726] p-3 rounded-xl border border-[#1E2638] flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-8 h-8 rounded-full overflow-hidden border border-indigo-500/30 shrink-0 bg-indigo-950 flex items-center justify-center text-xs font-bold text-indigo-300">
+                {adminName.substring(0, 2).toUpperCase()}
+              </div>
+              <div className="flex flex-col min-w-0">
+                <span className="text-xs font-semibold text-slate-200 truncate capitalize">
+                  {adminName}
+                </span>
+                <span className="text-[10px] text-emerald-400 flex items-center gap-1 font-mono">
+                  <ShieldCheck className="w-3 h-3" /> Admin Session
+                </span>
+              </div>
             </div>
-            <div className="flex flex-col min-w-0">
-              <span className="text-xs font-semibold text-slate-200 truncate">
-                Admin Console
-              </span>
-              <span className="text-[10px] text-emerald-400 flex items-center gap-1 font-mono">
-                <ShieldCheck className="w-3 h-3" /> Multi-Tenant Active
-              </span>
-            </div>
+            <button
+              onClick={handleLogout}
+              title="Logout"
+              className="p-2 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 transition-colors shrink-0 cursor-pointer"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
           </div>
         ) : (
-          <div className="flex justify-center">
-            <div className="w-8 h-8 rounded-full overflow-hidden border border-indigo-500/30">
-              <Image
-                src="/logo.png"
-                alt="DOCGEN Avatar"
-                width={32}
-                height={32}
-                className="w-full h-full object-cover"
-              />
+          <div className="flex flex-col items-center gap-2">
+            <div
+              className="w-8 h-8 rounded-full bg-indigo-950 border border-indigo-500/30 flex items-center justify-center text-xs font-bold text-indigo-300"
+              title={`Logged in as ${adminName}`}
+            >
+              {adminName.substring(0, 2).toUpperCase()}
             </div>
+            <button
+              onClick={handleLogout}
+              title="Logout"
+              className="p-2 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 transition-colors cursor-pointer"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
           </div>
         )}
       </div>

@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState } from "react";
-import { Building2, Plus, ChevronDown, Sparkles } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Building2, Plus, ChevronDown, Sparkles, LogOut } from "lucide-react";
 import ThemeToggle from "@/components/ThemeToggle";
 
 interface HeaderProps {
@@ -17,7 +18,14 @@ export default function Header({
   setSelectedCompany,
   companies,
 }: HeaderProps) {
+  const router = useRouter();
   const [dropdownOpen, setDropdownOpen] = useState(false);
+
+  const handleLogout = () => {
+    localStorage.removeItem("adminToken");
+    localStorage.removeItem("adminUser");
+    router.push("/login");
+  };
 
   return (
     <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
@@ -33,6 +41,16 @@ export default function Header({
       <div className="flex items-center gap-3 self-start md:self-auto">
         {/* Theme Toggle Button */}
         <ThemeToggle />
+
+        {/* Header Logout Button */}
+        <button
+          onClick={handleLogout}
+          title="Logout Admin"
+          className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 text-xs font-semibold transition-all cursor-pointer"
+        >
+          <LogOut className="w-4 h-4" />
+          <span className="hidden sm:inline">Logout</span>
+        </button>
 
         {/* Company Switcher Dropdown (Multi-Tenant Support) */}
         <div className="relative">
