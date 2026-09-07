@@ -1,0 +1,22 @@
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+
+  # Serve existing files and directories directly (CSS, JS, images etc.)
+  RewriteCond %{REQUEST_FILENAME} -f [OR]
+  RewriteCond %{REQUEST_FILENAME} -d
+  RewriteRule ^ - [L]
+
+  # For Next.js routes: serve the index.html inside that directory
+  RewriteCond %{DOCUMENT_ROOT}%{REQUEST_URI}index.html -f
+  RewriteRule ^(.*)$ %{REQUEST_URI}index.html [L]
+
+  # Fallback: serve root index.html (for SPA routing)
+  RewriteRule ^ /index.html [L]
+</IfModule>
+
+# Correct MIME types for JavaScript modules
+<IfModule mod_mime.c>
+  AddType application/javascript .js
+  AddType text/css .css
+</IfModule>

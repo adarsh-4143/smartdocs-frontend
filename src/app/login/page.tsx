@@ -36,7 +36,8 @@ export default function AdminLoginPage() {
     setLoading(true);
 
     try {
-      const response = await fetch("http://localhost:5000/api/v1/admin/login", {
+      const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5000/api/v1";
+      const response = await fetch(`${baseUrl}/admin/login`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -69,7 +70,7 @@ export default function AdminLoginPage() {
       setSuccess("Login successful! Redirecting...");
 
       setTimeout(() => {
-        router.push("/");
+        window.location.replace("/");
       }, 1000);
     } catch (err: any) {
       setError(err.message || "Unable to connect to server. Please try again.");

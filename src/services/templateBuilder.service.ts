@@ -82,7 +82,7 @@ export const templateBuilderService = {
       try {
         const json = JSON.parse(errText);
         msg = json.message || msg;
-      } catch {}
+      } catch { }
       throw new Error(msg);
     }
 

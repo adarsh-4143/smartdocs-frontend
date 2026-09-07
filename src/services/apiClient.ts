@@ -39,10 +39,12 @@ class ApiClient {
       if (!response.ok) {
         const errorMsg =
           json?.message ||
+          json?.error ||
+          json?.detail ||
           (json?.errors && Array.isArray(json.errors)
             ? json.errors.map((e: any) => e.msg || e.message).join(", ")
             : null) ||
-          `HTTP Error ${response.status}: ${response.statusText}`;
+          `HTTP Error ${response.status}: ${response.statusText || "Internal Server Error"}`;
 
         throw new Error(errorMsg);
       }

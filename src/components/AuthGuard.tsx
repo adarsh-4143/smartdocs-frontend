@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { usePathname, useRouter } from "next/navigation";
 import { Loader2, ShieldCheck } from "lucide-react";
 
 interface AuthGuardProps {
@@ -9,37 +8,35 @@ interface AuthGuardProps {
 }
 
 export default function AuthGuard({ children }: AuthGuardProps) {
-  const router = useRouter();
-  const pathname = usePathname();
-  const [authorized, setAuthorized] = useState(false);
-  const [checking, setChecking] = useState(true);
+  const [status, setStatus] = useState<"checking" | "authorized" | "redirecting">("checking");
 
   useEffect(() => {
-    // Perform authentication check
-    const token = typeof window !== "undefined" ? localStorage.getItem("adminToken") : null;
+    const token = localStorage.getItem("adminToken");
+    const currentPath = window.location.pathname;
 
-    if (pathname === "/login") {
-      // If user is already logged in and visits /login, send them to dashboard
+    const isLoginPage =
+      currentPath === "/login" ||
+      currentPath === "/login/" ||
+      currentPath.endsWith("/login/index.html");
+
+    if (isLoginPage) {
       if (token) {
-        router.replace("/");
+        // Already logged in, go to dashboard
+        window.location.replace("/");
       } else {
-        setAuthorized(true);
+        setStatus("authorized");
       }
     } else {
-      // For any other page, token is required
       if (!token) {
-        setAuthorized(false);
-        router.replace("/login");
+        setStatus("redirecting");
+        window.location.replace("/login/");
       } else {
-        setAuthorized(true);
+        setStatus("authorized");
       }
     }
+  }, []);
 
-    setChecking(false);
-  }, [pathname, router]);
-
-  // Show smooth splash screen while checking authentication status
-  if (checking) {
+  if (status === "checking" || status === "redirecting") {
     return (
       <div className="min-h-screen w-full bg-[#070911] flex flex-col items-center justify-center text-white p-4">
         <div className="w-12 h-12 bg-indigo-600/20 border border-indigo-500/30 rounded-2xl flex items-center justify-center mb-4 animate-pulse">
@@ -47,15 +44,10 @@ export default function AuthGuard({ children }: AuthGuardProps) {
         </div>
         <div className="flex items-center gap-2 text-sm text-slate-400">
           <Loader2 className="w-4 h-4 animate-spin text-indigo-400" />
-          <span>Verifying admin session...</span>
+          <span>{status === "redirecting" ? "Redirecting to login..." : "Verifying admin session..."}</span>
         </div>
       </div>
     );
-  }
-
-  // Prevent rendering protected content if unauthenticated
-  if (!authorized && pathname !== "/login") {
-    return null;
   }
 
   return <>{children}</>;
