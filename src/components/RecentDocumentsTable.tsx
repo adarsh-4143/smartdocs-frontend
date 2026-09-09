@@ -6,9 +6,7 @@ import {
   Download,
   Send,
   MoreVertical,
-  FileText,
   Search,
-  Filter,
   CheckCircle2,
   Clock,
   AlertCircle,
@@ -49,26 +47,26 @@ export default function RecentDocumentsTable({
     switch (status) {
       case "Generated":
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-950/80 text-emerald-400 border border-emerald-500/30">
-            <CheckCircle2 className="w-3 h-3" /> Generated
+          <span className="status-badge status-badge-ok">
+            <CheckCircle2 /> Generated
           </span>
         );
       case "Sent":
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-950/80 text-blue-400 border border-blue-500/30">
-            <Send className="w-3 h-3" /> Sent
+          <span className="status-badge status-badge-ok">
+            <Send /> Sent
           </span>
         );
       case "Draft":
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-950/80 text-amber-400 border border-amber-500/30">
-            <Clock className="w-3 h-3" /> Draft
+          <span className="status-badge status-badge-draft">
+            <Clock /> Draft
           </span>
         );
       case "Failed":
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-rose-950/80 text-rose-400 border border-rose-500/30">
-            <AlertCircle className="w-3 h-3" /> Failed
+          <span className="status-badge status-badge-fail">
+            <AlertCircle /> Failed
           </span>
         );
     }

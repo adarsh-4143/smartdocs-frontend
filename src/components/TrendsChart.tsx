@@ -37,7 +37,7 @@ export default function TrendsChart() {
           </p>
         </div>
 
-        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-950/60 border border-emerald-500/30 text-emerald-400 text-xs font-semibold shadow-sm">
+        <div className="dash-growth flex items-center gap-2 px-3 py-1.5 text-xs">
           <TrendingUp className="w-3.5 h-3.5" />
           <span>+24.8% growth</span>
         </div>

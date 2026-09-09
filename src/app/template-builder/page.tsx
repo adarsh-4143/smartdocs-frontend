@@ -21,7 +21,6 @@ import {
   Clock,
   Ban,
   Archive,
-  ArrowRight,
 } from "lucide-react";
 
 export default function TemplateBuilderDirectoryPage() {
@@ -29,7 +28,6 @@ export default function TemplateBuilderDirectoryPage() {
   const [collapsed, setCollapsed] = useState(false);
 
   const [templates, setTemplates] = useState<TemplateMaster[]>([]);
-  const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -54,9 +52,8 @@ export default function TemplateBuilderDirectoryPage() {
   }, [fetchTemplates]);
 
   const handleLaunchBuilder = (id?: string) => {
-    const targetId = id || selectedTemplateId;
-    if (!targetId) return;
-    router.push(`/template-builder/${targetId}`);
+    if (!id) return;
+    router.push(`/template-builder/${id}`);
   };
 
   const filteredTemplates = templates.filter((t) => {
@@ -120,58 +117,26 @@ export default function TemplateBuilderDirectoryPage() {
             </div>
           )}
 
-          {/* Quick Select & Launch Card */}
-          <div className="glass-card p-6 rounded-2xl border border-indigo-500/30 bg-gradient-to-r from-indigo-950/30 via-slate-900 to-indigo-950/20 flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div className="flex-1 space-y-2">
-              <label className="block text-xs font-bold text-slate-200 uppercase tracking-wider font-mono">
-                Quick Template Selector
-              </label>
-              <select
-                value={selectedTemplateId}
-                onChange={(e) => setSelectedTemplateId(e.target.value)}
-                className="w-full bg-[#121829] border border-[#202B44] rounded-xl px-4 py-2.5 text-xs text-white font-semibold focus:outline-none focus:border-indigo-500 cursor-pointer shadow-lg"
-              >
-                {templates.length === 0 ? (
-                  <option value="">No Template Masters Available</option>
-                ) : (
-                  <>
-                    <option value="" disabled className="bg-[#0F1424]">Select a Template Master...</option>
-                    {templates.map((t) => (
-                      <option key={t.id} value={t.id} className="bg-[#0F1424]">
-                        {t.templateName} ({t.templateCode}) — v{t.version || "1.0.0"}
-                      </option>
-                    ))}
-                  </>
-                )}
-              </select>
-            </div>
-
-            <button
-              onClick={() => handleLaunchBuilder()}
-              disabled={!selectedTemplateId}
-              className="gradient-btn flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-white font-bold text-xs cursor-pointer shadow-lg shadow-indigo-500/20 disabled:opacity-40 shrink-0 self-end md:self-auto"
-            >
-              <PenTool className="w-4 h-4" />
-              <span>Open Template Builder</span>
-              <ArrowRight className="w-4 h-4" />
-            </button>
-          </div>
-
           {/* Search Bar */}
-          <div className="glass-card p-4 rounded-2xl border border-[#1E2638] flex items-center justify-between gap-4">
-            <div className="relative flex-1 max-w-md">
-              <Search className="w-4 h-4 text-slate-500 absolute left-3.5 top-3" />
-              <input
-                type="text"
-                placeholder="Search templates by code, name, or version..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full bg-[#141A2C] border border-[#202B44] rounded-xl pl-9 pr-4 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
-              />
-            </div>
-            <span className="text-xs font-mono text-slate-400">
+          <div className="glass-card py-2 px-4 rounded-2xl border border-[#1E2638] flex flex-nowrap items-center justify-between gap-3">
+            <span className="text-xs font-mono text-slate-400 shrink-0">
               Showing {filteredTemplates.length} of {templates.length} templates
             </span>
+            <div className={`page-search float-field [&_.float-input]:h-10 ${searchTerm ? "is-filled" : ""}`}>
+              <Search className="page-search-icon" />
+              <input
+                id="builder-search"
+                type="text"
+                placeholder=" "
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="float-input"
+                autoComplete="off"
+              />
+              <label htmlFor="builder-search" className="float-label">
+                Search templates
+              </label>
+            </div>
           </div>
 
           {/* Templates Directory Table */}

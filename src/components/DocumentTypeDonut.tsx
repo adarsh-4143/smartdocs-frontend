@@ -5,9 +5,9 @@ import { PieChart } from "lucide-react";
 
 export default function DocumentTypeDonut() {
   const data = [
-    { label: "Offer Letter", percentage: 42, color: "#6366f1", bgClass: "bg-indigo-500" },
-    { label: "Payslip", percentage: 25, color: "#06b6d4", bgClass: "bg-cyan-500" },
-    { label: "Invoice", percentage: 15, color: "#3b82f6", bgClass: "bg-blue-500" },
+    { label: "Offer Letter", percentage: 42, color: "#3f5f59", bgClass: "bg-[#3f5f59]" },
+    { label: "Payslip", percentage: 25, color: "#6d8f87", bgClass: "bg-[#6d8f87]" },
+    { label: "Invoice", percentage: 15, color: "#8aa8a1", bgClass: "bg-[#8aa8a1]" },
     { label: "Quotation", percentage: 10, color: "#a855f7", bgClass: "bg-purple-500" },
     { label: "Experience Letter", percentage: 5, color: "#10b981", bgClass: "bg-emerald-500" },
     { label: "Other", percentage: 3, color: "#64748b", bgClass: "bg-slate-500" },
@@ -33,7 +33,7 @@ export default function DocumentTypeDonut() {
               Breakdown by generated document category
             </p>
           </div>
-          <div className="w-8 h-8 rounded-lg bg-indigo-950/60 border border-indigo-500/30 flex items-center justify-center text-indigo-400">
+          <div className="w-8 h-8 rounded-lg bg-[#2d3633] border border-[#3f5f59]/30 flex items-center justify-center text-[#8aa8a1]">
             <PieChart className="w-4 h-4" />
           </div>
         </div>

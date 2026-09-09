@@ -7,8 +7,8 @@ export default function GenerationStatusPie() {
   const statuses = [
     { label: "Generated", percentage: 78, color: "bg-emerald-500", textColor: "text-emerald-400" },
     { label: "Draft", percentage: 8, color: "bg-amber-500", textColor: "text-amber-400" },
-    { label: "Sent", percentage: 7, color: "bg-blue-500", textColor: "text-blue-400" },
-    { label: "Processing", percentage: 5, color: "bg-indigo-500", textColor: "text-indigo-400" },
+    { label: "Sent", percentage: 7, color: "bg-[#3f5f59]", textColor: "text-[#3f5f59]" },
+    { label: "Processing", percentage: 5, color: "bg-[#6d8f87]", textColor: "text-[#6d8f87]" },
     { label: "Failed", percentage: 2, color: "bg-rose-500", textColor: "text-rose-400" },
   ];
 

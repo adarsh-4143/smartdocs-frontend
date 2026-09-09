@@ -93,7 +93,7 @@ export default function GenerationTrendChart() {
               onClick={() => setTimeframe(tf)}
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                 timeframe === tf
-                  ? "bg-indigo-600 text-white shadow-md shadow-indigo-500/20"
+                  ? "bg-[#3f5f59] text-[#f7f4ee] shadow-md shadow-[#3f5f59]/20"
                   : "text-slate-400 hover:text-slate-200"
               }`}
             >
@@ -107,7 +107,7 @@ export default function GenerationTrendChart() {
       <div className="relative flex-1 flex flex-col justify-end pt-4 pb-2">
         {/* Tooltip Overlay */}
         {hoveredPoint && (
-          <div className="absolute top-2 right-4 bg-[#131929] border border-indigo-500/40 px-3 py-1.5 rounded-lg text-xs shadow-xl z-20 flex items-center gap-2 animate-in fade-in">
+          <div className="absolute top-2 right-4 bg-[#131929] border border-[#3f5f59]/40 px-3 py-1.5 rounded-lg text-xs shadow-xl z-20 flex items-center gap-2 animate-in fade-in">
             <span className="text-slate-400">{hoveredPoint.day}:</span>
             <span className="font-bold text-white">{hoveredPoint.val} Documents</span>
           </div>
@@ -121,13 +121,13 @@ export default function GenerationTrendChart() {
           >
             <defs>
               <linearGradient id="glowGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#6366f1" stopOpacity="0.4" />
-                <stop offset="100%" stopColor="#06b6d4" stopOpacity="0.0" />
+                <stop offset="0%" stopColor="#3f5f59" stopOpacity="0.38" />
+                <stop offset="100%" stopColor="#8aa8a1" stopOpacity="0.0" />
               </linearGradient>
               <linearGradient id="lineGradient" x1="0" y1="0" x2="1" y2="0">
-                <stop offset="0%" stopColor="#6366f1" />
-                <stop offset="50%" stopColor="#3b82f6" />
-                <stop offset="100%" stopColor="#06b6d4" />
+                <stop offset="0%" stopColor="#3f5f59" />
+                <stop offset="50%" stopColor="#6d8f87" />
+                <stop offset="100%" stopColor="#8aa8a1" />
               </linearGradient>
             </defs>
 
@@ -155,7 +155,7 @@ export default function GenerationTrendChart() {
                   cx={c.x}
                   cy={c.y}
                   r="5"
-                  className="fill-indigo-500 stroke-[#090C15] stroke-2 group-hover:r-7 transition-all"
+                  className="fill-[#3f5f59] stroke-[#fffdf8] stroke-2 group-hover:r-7 transition-all"
                   onMouseEnter={() => setHoveredPoint({ day: c.day, val: c.val })}
                   onMouseLeave={() => setHoveredPoint(null)}
                 />

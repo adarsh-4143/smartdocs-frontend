@@ -30,6 +30,8 @@ import {
   ExternalLink,
 } from "lucide-react";
 import { generateNextCode } from "@/lib/codeGenerator";
+import { FloatInput, FloatSelect, FloatTextarea } from "@/components/FloatField";
+import AppToast, { isValidEmail, type ToastType } from "@/components/AppToast";
 
 export default function CompanyManagementPage() {
   const router = useRouter();
@@ -52,11 +54,11 @@ export default function CompanyManagementPage() {
   const [activeTab, setActiveTab] = useState<"basic" | "tax" | "contact" | "address" | "branding" | "settings">("basic");
 
   // Notification Banner
-  const [toast, setToast] = useState<{ type: "success" | "error"; msg: string } | null>(null);
+  const [toast, setToast] = useState<{ type: ToastType; msg: string } | null>(null);
 
-  const showToast = (type: "success" | "error", msg: string) => {
+  const showToast = (type: ToastType, msg: string) => {
     setToast({ type, msg });
-    setTimeout(() => setToast(null), 4000);
+    setTimeout(() => setToast(null), 4500);
   };
 
   // Clean form payload helper (converts empty strings to null or strips them)
@@ -224,6 +226,36 @@ export default function CompanyManagementPage() {
   // Submit Handler for Create & Update
   const handleSubmitForm = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    const missing: string[] = [];
+    if (!formData.companyCode?.trim()) missing.push("Company Code");
+    if (!formData.companyName?.trim()) missing.push("Company Name");
+
+    if (missing.length) {
+      setActiveTab("basic");
+      showToast(
+        "warning",
+        `Fill the required fields before saving: ${missing.join(", ")}.`
+      );
+      return;
+    }
+
+    const emailChecks: Array<[string | undefined, string]> = [
+      [formData.officialEmail, "Official Email"],
+      [formData.hrEmail, "HR Email"],
+      [formData.accountsEmail, "Accounts Email"],
+      [formData.supportEmail, "Support Email"],
+    ];
+    const badEmails = emailChecks
+      .filter(([value]) => value?.trim() && !isValidEmail(value || ""))
+      .map(([, label]) => label);
+
+    if (badEmails.length) {
+      setActiveTab("contact");
+      showToast("warning", `Enter a valid email for: ${badEmails.join(", ")}.`);
+      return;
+    }
+
     setFormSubmitting(true);
 
     const payload = cleanPayload(formData as Record<string, any>);
@@ -369,27 +401,8 @@ export default function CompanyManagementPage() {
         }`}
       >
         <div className="max-w-7xl mx-auto space-y-6">
-          {/* Notification Toast */}
           {toast && (
-            <div
-              className={`p-4 rounded-xl text-xs font-semibold shadow-2xl flex items-center justify-between border animate-in slide-in-from-top duration-200 ${
-                toast.type === "success"
-                  ? "bg-emerald-950/90 text-emerald-200 border-emerald-500/40"
-                  : "bg-rose-950/90 text-rose-200 border-rose-500/40"
-              }`}
-            >
-              <div className="flex items-center gap-2">
-                {toast.type === "success" ? (
-                  <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                ) : (
-                  <AlertCircle className="w-4 h-4 text-rose-400" />
-                )}
-                <span>{toast.msg}</span>
-              </div>
-              <button onClick={() => setToast(null)}>
-                <X className="w-3.5 h-3.5 opacity-70 hover:opacity-100" />
-              </button>
-            </div>
+            <AppToast type={toast.type} message={toast.msg} onClose={() => setToast(null)} />
           )}
 
           {/* Page Header */}
@@ -484,51 +497,68 @@ export default function CompanyManagementPage() {
 
           {/* Filters & Actions Bar */}
           <div className="glass-card p-4 rounded-2xl border border-[#1E2638] flex flex-col md:flex-row items-center justify-between gap-4">
-            <div className="flex flex-1 items-center gap-3 w-full md:w-auto">
-              {/* Search Bar */}
-              <div className="relative flex-1 max-w-md">
-                <Search className="w-4 h-4 text-slate-500 absolute left-3.5 top-3" />
-                <input
-                  type="text"
-                  placeholder="Search by company name, code, industry, or email..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full bg-[#141A2C] border border-[#202B44] rounded-xl pl-9 pr-4 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
-                />
+            <div className="flex items-center gap-3 w-full md:w-auto">
+              <div className={`page-filter float-field ${statusFilter !== "all" ? "is-filled" : ""}`}>
+                <Filter className="page-filter-icon" />
+                <select
+                  id="company-status-filter"
+                  value={statusFilter === "all" ? "" : statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value || "all")}
+                  className="float-input"
+                >
+                  <option value="" hidden disabled />
+                  <option value="active">Active</option>
+                  <option value="inactive">Inactive</option>
+                  <option value="pending">Pending</option>
+                  <option value="suspended">Suspended</option>
+                </select>
+                <label htmlFor="company-status-filter" className="float-label">
+                  Status
+                </label>
+                {statusFilter !== "all" && (
+                  <button
+                    type="button"
+                    className="page-filter-clear"
+                    onClick={() => setStatusFilter("all")}
+                    title="Clear filter"
+                    aria-label="Clear status filter"
+                  >
+                    <X />
+                  </button>
+                )}
               </div>
 
-              {/* Status Filter */}
-              <div className="flex items-center gap-2 bg-[#141A2C] border border-[#202B44] rounded-xl px-3 py-1.5">
-                <Filter className="w-3.5 h-3.5 text-slate-400" />
-                <select
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                  className="bg-transparent text-xs text-slate-200 focus:outline-none cursor-pointer"
-                >
-                  <option value="all" className="bg-[#141A2C]">All Statuses</option>
-                  <option value="active" className="bg-[#141A2C]">Active Only</option>
-                  <option value="inactive" className="bg-[#141A2C]">Inactive</option>
-                  <option value="pending" className="bg-[#141A2C]">Pending</option>
-                  <option value="suspended" className="bg-[#141A2C]">Suspended</option>
-                </select>
-              </div>
+              {selectedIds.length > 0 && (
+                <div className="flex items-center gap-3 animate-in fade-in">
+                  <span className="text-xs text-indigo-400 font-mono">
+                    {selectedIds.length} selected
+                  </span>
+                  <button
+                    onClick={handleBulkDelete}
+                    className="px-3 py-1.5 rounded-lg bg-rose-950/80 hover:bg-rose-900 border border-rose-500/40 text-rose-300 text-xs font-semibold flex items-center gap-1.5 transition-all"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Delete Selected</span>
+                  </button>
+                </div>
+              )}
             </div>
 
-            {/* Bulk Action Controls */}
-            {selectedIds.length > 0 && (
-              <div className="flex items-center gap-3 animate-in fade-in">
-                <span className="text-xs text-indigo-400 font-mono">
-                  {selectedIds.length} selected
-                </span>
-                <button
-                  onClick={handleBulkDelete}
-                  className="px-3 py-1.5 rounded-lg bg-rose-950/80 hover:bg-rose-900 border border-rose-500/40 text-rose-300 text-xs font-semibold flex items-center gap-1.5 transition-all"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                  <span>Delete Selected</span>
-                </button>
-              </div>
-            )}
+            <div className={`page-search float-field ${searchTerm ? "is-filled" : ""}`}>
+              <Search className="page-search-icon" />
+              <input
+                id="company-search"
+                type="text"
+                placeholder=" "
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="float-input"
+                autoComplete="off"
+              />
+              <label htmlFor="company-search" className="float-label">
+                Search companies
+              </label>
+            </div>
           </div>
 
           {/* Company Data Table */}
@@ -703,7 +733,7 @@ export default function CompanyManagementPage() {
       {/* CREATE / QUICK EDIT COMPANY MODAL */}
       {isFormModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-150">
-          <div className="bg-[#0F1424] border border-[#1E273E] w-full max-w-3xl rounded-2xl shadow-2xl overflow-hidden relative max-h-[90vh] flex flex-col">
+          <div className="company-form-modal bg-[#0F1424] border border-[#1E273E] w-full max-w-3xl rounded-2xl shadow-2xl overflow-hidden relative max-h-[90vh] flex flex-col">
             {/* Modal Header */}
             <div className="flex items-center justify-between p-5 border-b border-[#1E2638] bg-[#0C101D]">
               <div className="flex items-center gap-3">
@@ -753,429 +783,260 @@ export default function CompanyManagementPage() {
             </div>
 
             {/* Form Body */}
-            <form onSubmit={handleSubmitForm} className="p-6 overflow-y-auto space-y-4 flex-1">
+            <form noValidate onSubmit={handleSubmitForm} className="p-6 pt-7 overflow-y-auto space-y-4 flex-1">
               {activeTab === "basic" && (
-                <div className="space-y-4 animate-in fade-in duration-150">
+                <div className="space-y-4 animate-in fade-in duration-150 pt-1">
                   <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-300 mb-1">
-                        Company Code *
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={formData.companyCode}
-                        onChange={(e) => setFormData({ ...formData, companyCode: e.target.value })}
-                        className="w-full bg-[#141A2C] border border-[#202B44] rounded-xl px-4 py-2 text-xs text-white focus:outline-none focus:border-indigo-500 font-mono"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-300 mb-1">
-                        Company Name *
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        placeholder="e.g. Acme Corporation"
-                        value={formData.companyName}
-                        onChange={(e) => setFormData({ ...formData, companyName: e.target.value })}
-                        className="w-full bg-[#141A2C] border border-[#202B44] rounded-xl px-4 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
-                      />
-                    </div>
+                    <FloatInput
+                      id="company-code"
+                      label="Company Code *"
+                      required
+                      value={formData.companyCode}
+                      onChange={(e) => setFormData({ ...formData, companyCode: e.target.value })}
+                    />
+                    <FloatInput
+                      id="company-name"
+                      label="Company Name *"
+                      required
+                      value={formData.companyName}
+                      onChange={(e) => setFormData({ ...formData, companyName: e.target.value })}
+                    />
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-300 mb-1">
-                        Legal Name
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="e.g. Acme Private Limited"
-                        value={formData.legalName || ""}
-                        onChange={(e) => setFormData({ ...formData, legalName: e.target.value })}
-                        className="w-full bg-[#141A2C] border border-[#202B44] rounded-xl px-4 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-300 mb-1">
-                        Display Name
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="Acme"
-                        value={formData.displayName || ""}
-                        onChange={(e) => setFormData({ ...formData, displayName: e.target.value })}
-                        className="w-full bg-[#141A2C] border border-[#202B44] rounded-xl px-4 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
-                      />
-                    </div>
+                    <FloatInput
+                      id="legal-name"
+                      label="Legal Name"
+                      value={formData.legalName || ""}
+                      onChange={(e) => setFormData({ ...formData, legalName: e.target.value })}
+                    />
+                    <FloatInput
+                      id="display-name"
+                      label="Display Name"
+                      value={formData.displayName || ""}
+                      onChange={(e) => setFormData({ ...formData, displayName: e.target.value })}
+                    />
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-300 mb-1">
-                        Company Type
-                      </label>
-                      <select
-                        value={formData.companyType || "Private Limited"}
-                        onChange={(e) => setFormData({ ...formData, companyType: e.target.value })}
-                        className="w-full bg-[#141A2C] border border-[#202B44] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
-                      >
-                        <option value="Private Limited">Private Limited</option>
-                        <option value="Public Limited">Public Limited</option>
-                        <option value="LLP">LLP</option>
-                        <option value="Partnership">Partnership</option>
-                        <option value="Sole Proprietorship">Sole Proprietorship</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-300 mb-1">
-                        Industry
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="e.g. Information Technology"
-                        value={formData.industry || ""}
-                        onChange={(e) => setFormData({ ...formData, industry: e.target.value })}
-                        className="w-full bg-[#141A2C] border border-[#202B44] rounded-xl px-4 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
-                      />
-                    </div>
+                    <FloatSelect
+                      id="company-type"
+                      label="Company Type"
+                      value={formData.companyType || "Private Limited"}
+                      onChange={(e) => setFormData({ ...formData, companyType: e.target.value })}
+                    >
+                      <option value="Private Limited">Private Limited</option>
+                      <option value="Public Limited">Public Limited</option>
+                      <option value="LLP">LLP</option>
+                      <option value="Partnership">Partnership</option>
+                      <option value="Sole Proprietorship">Sole Proprietorship</option>
+                    </FloatSelect>
+                    <FloatInput
+                      id="industry"
+                      label="Industry"
+                      value={formData.industry || ""}
+                      onChange={(e) => setFormData({ ...formData, industry: e.target.value })}
+                    />
                   </div>
 
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1">
-                      Company Overview / Description
-                    </label>
-                    <textarea
-                      rows={3}
-                      placeholder="Brief overview of company operations..."
-                      value={formData.description || ""}
-                      onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                      className="w-full bg-[#141A2C] border border-[#202B44] rounded-xl px-4 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
-                    ></textarea>
-                  </div>
+                  <FloatTextarea
+                    id="description"
+                    label="Company Overview / Description"
+                    value={formData.description || ""}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  />
                 </div>
               )}
 
               {activeTab === "tax" && (
-                <div className="space-y-4 animate-in fade-in duration-150">
+                <div className="space-y-4 animate-in fade-in duration-150 pt-1">
                   <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-300 mb-1">
-                        GST Number
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="27AAACN1234F1Z5"
-                        value={formData.gstNumber || ""}
-                        onChange={(e) => setFormData({ ...formData, gstNumber: e.target.value })}
-                        className="w-full bg-[#141A2C] border border-[#202B44] rounded-xl px-4 py-2 text-xs text-white font-mono focus:outline-none focus:border-indigo-500"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-300 mb-1">
-                        PAN Number
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="AAACN1234F"
-                        value={formData.panNumber || ""}
-                        onChange={(e) => setFormData({ ...formData, panNumber: e.target.value })}
-                        className="w-full bg-[#141A2C] border border-[#202B44] rounded-xl px-4 py-2 text-xs text-white font-mono focus:outline-none focus:border-indigo-500"
-                      />
-                    </div>
+                    <FloatInput
+                      id="gst-number"
+                      label="GST Number"
+                      value={formData.gstNumber || ""}
+                      onChange={(e) => setFormData({ ...formData, gstNumber: e.target.value })}
+                    />
+                    <FloatInput
+                      id="pan-number"
+                      label="PAN Number"
+                      value={formData.panNumber || ""}
+                      onChange={(e) => setFormData({ ...formData, panNumber: e.target.value })}
+                    />
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-300 mb-1">
-                        CIN Number
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="U72900MH2024PTC123456"
-                        value={formData.cinNumber || ""}
-                        onChange={(e) => setFormData({ ...formData, cinNumber: e.target.value })}
-                        className="w-full bg-[#141A2C] border border-[#202B44] rounded-xl px-4 py-2 text-xs text-white font-mono focus:outline-none focus:border-indigo-500"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-300 mb-1">
-                        TAN Number
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="MUMA12345F"
-                        value={formData.tanNumber || ""}
-                        onChange={(e) => setFormData({ ...formData, tanNumber: e.target.value })}
-                        className="w-full bg-[#141A2C] border border-[#202B44] rounded-xl px-4 py-2 text-xs text-white font-mono focus:outline-none focus:border-indigo-500"
-                      />
-                    </div>
+                    <FloatInput
+                      id="cin-number"
+                      label="CIN Number"
+                      value={formData.cinNumber || ""}
+                      onChange={(e) => setFormData({ ...formData, cinNumber: e.target.value })}
+                    />
+                    <FloatInput
+                      id="tan-number"
+                      label="TAN Number"
+                      value={formData.tanNumber || ""}
+                      onChange={(e) => setFormData({ ...formData, tanNumber: e.target.value })}
+                    />
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-300 mb-1">
-                        Registration Number
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="REG-991202"
-                        value={formData.registrationNumber || ""}
-                        onChange={(e) => setFormData({ ...formData, registrationNumber: e.target.value })}
-                        className="w-full bg-[#141A2C] border border-[#202B44] rounded-xl px-4 py-2 text-xs text-white font-mono focus:outline-none focus:border-indigo-500"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-300 mb-1">
-                        Tax Identification Number (TIN)
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="TIN-884129"
-                        value={formData.taxIdentificationNumber || ""}
-                        onChange={(e) => setFormData({ ...formData, taxIdentificationNumber: e.target.value })}
-                        className="w-full bg-[#141A2C] border border-[#202B44] rounded-xl px-4 py-2 text-xs text-white font-mono focus:outline-none focus:border-indigo-500"
-                      />
-                    </div>
+                    <FloatInput
+                      id="registration-number"
+                      label="Registration Number"
+                      value={formData.registrationNumber || ""}
+                      onChange={(e) => setFormData({ ...formData, registrationNumber: e.target.value })}
+                    />
+                    <FloatInput
+                      id="tin-number"
+                      label="Tax Identification Number (TIN)"
+                      value={formData.taxIdentificationNumber || ""}
+                      onChange={(e) => setFormData({ ...formData, taxIdentificationNumber: e.target.value })}
+                    />
                   </div>
                 </div>
               )}
 
               {activeTab === "contact" && (
-                <div className="space-y-4 animate-in fade-in duration-150">
+                <div className="space-y-4 animate-in fade-in duration-150 pt-1">
                   <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-300 mb-1">
-                        Official Email
-                      </label>
-                      <input
-                        type="email"
-                        placeholder="contact@company.com"
-                        value={formData.officialEmail || ""}
-                        onChange={(e) => setFormData({ ...formData, officialEmail: e.target.value })}
-                        className="w-full bg-[#141A2C] border border-[#202B44] rounded-xl px-4 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-300 mb-1">
-                        HR Email
-                      </label>
-                      <input
-                        type="email"
-                        placeholder="hr@company.com"
-                        value={formData.hrEmail || ""}
-                        onChange={(e) => setFormData({ ...formData, hrEmail: e.target.value })}
-                        className="w-full bg-[#141A2C] border border-[#202B44] rounded-xl px-4 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
-                      />
-                    </div>
+                    <FloatInput
+                      id="official-email"
+                      label="Official Email"
+                      type="email"
+                      value={formData.officialEmail || ""}
+                      onChange={(e) => setFormData({ ...formData, officialEmail: e.target.value })}
+                    />
+                    <FloatInput
+                      id="hr-email"
+                      label="HR Email"
+                      type="email"
+                      value={formData.hrEmail || ""}
+                      onChange={(e) => setFormData({ ...formData, hrEmail: e.target.value })}
+                    />
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-300 mb-1">
-                        Accounts Email
-                      </label>
-                      <input
-                        type="email"
-                        placeholder="accounts@company.com"
-                        value={formData.accountsEmail || ""}
-                        onChange={(e) => setFormData({ ...formData, accountsEmail: e.target.value })}
-                        className="w-full bg-[#141A2C] border border-[#202B44] rounded-xl px-4 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-300 mb-1">
-                        Support Email
-                      </label>
-                      <input
-                        type="email"
-                        placeholder="support@company.com"
-                        value={formData.supportEmail || ""}
-                        onChange={(e) => setFormData({ ...formData, supportEmail: e.target.value })}
-                        className="w-full bg-[#141A2C] border border-[#202B44] rounded-xl px-4 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
-                      />
-                    </div>
+                    <FloatInput
+                      id="accounts-email"
+                      label="Accounts Email"
+                      type="email"
+                      value={formData.accountsEmail || ""}
+                      onChange={(e) => setFormData({ ...formData, accountsEmail: e.target.value })}
+                    />
+                    <FloatInput
+                      id="support-email"
+                      label="Support Email"
+                      type="email"
+                      value={formData.supportEmail || ""}
+                      onChange={(e) => setFormData({ ...formData, supportEmail: e.target.value })}
+                    />
                   </div>
 
                   <div className="grid grid-cols-3 gap-4">
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-300 mb-1">
-                        Phone Number
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="+91 98765 43210"
-                        value={formData.phoneNumber || ""}
-                        onChange={(e) => setFormData({ ...formData, phoneNumber: e.target.value })}
-                        className="w-full bg-[#141A2C] border border-[#202B44] rounded-xl px-4 py-2 text-xs text-white focus:outline-none focus:border-indigo-500 font-mono"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-300 mb-1">
-                        Alternate Phone
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="+91 91234 56789"
-                        value={formData.alternatePhoneNumber || ""}
-                        onChange={(e) => setFormData({ ...formData, alternatePhoneNumber: e.target.value })}
-                        className="w-full bg-[#141A2C] border border-[#202B44] rounded-xl px-4 py-2 text-xs text-white focus:outline-none focus:border-indigo-500 font-mono"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-300 mb-1">
-                        Website URL
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="https://company.com"
-                        value={formData.website || ""}
-                        onChange={(e) => setFormData({ ...formData, website: e.target.value })}
-                        className="w-full bg-[#141A2C] border border-[#202B44] rounded-xl px-4 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
-                      />
-                    </div>
+                    <FloatInput
+                      id="phone-number"
+                      label="Phone Number"
+                      value={formData.phoneNumber || ""}
+                      onChange={(e) => setFormData({ ...formData, phoneNumber: e.target.value })}
+                    />
+                    <FloatInput
+                      id="alternate-phone"
+                      label="Alternate Phone"
+                      value={formData.alternatePhoneNumber || ""}
+                      onChange={(e) => setFormData({ ...formData, alternatePhoneNumber: e.target.value })}
+                    />
+                    <FloatInput
+                      id="website"
+                      label="Website URL"
+                      value={formData.website || ""}
+                      onChange={(e) => setFormData({ ...formData, website: e.target.value })}
+                    />
                   </div>
                 </div>
               )}
 
               {activeTab === "address" && (
-                <div className="space-y-4 animate-in fade-in duration-150">
-                  <span className="text-xs font-bold text-indigo-400 font-mono block uppercase">
+                <div className="space-y-4 animate-in fade-in duration-150 pt-1">
+                  <span className="text-xs font-bold text-[#8aa8a1] block uppercase">
                     Registered Legal Address
                   </span>
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1">
-                      Registered Line 1
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="Street, Building, Tower..."
-                      value={formData.registeredAddressLine1 || ""}
-                      onChange={(e) => setFormData({ ...formData, registeredAddressLine1: e.target.value })}
-                      className="w-full bg-[#141A2C] border border-[#202B44] rounded-xl px-4 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
-                    />
-                  </div>
+                  <FloatInput
+                    id="registered-line-1"
+                    label="Registered Line 1"
+                    value={formData.registeredAddressLine1 || ""}
+                    onChange={(e) => setFormData({ ...formData, registeredAddressLine1: e.target.value })}
+                  />
 
                   <div className="grid grid-cols-3 gap-4">
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-300 mb-1">
-                        Registered City
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="Mumbai"
-                        value={formData.registeredCity || ""}
-                        onChange={(e) => setFormData({ ...formData, registeredCity: e.target.value })}
-                        className="w-full bg-[#141A2C] border border-[#202B44] rounded-xl px-4 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-300 mb-1">
-                        Registered State
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="Maharashtra"
-                        value={formData.registeredState || ""}
-                        onChange={(e) => setFormData({ ...formData, registeredState: e.target.value })}
-                        className="w-full bg-[#141A2C] border border-[#202B44] rounded-xl px-4 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-300 mb-1">
-                        Postal Code
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="400001"
-                        value={formData.registeredPostalCode || ""}
-                        onChange={(e) => setFormData({ ...formData, registeredPostalCode: e.target.value })}
-                        className="w-full bg-[#141A2C] border border-[#202B44] rounded-xl px-4 py-2 text-xs text-white focus:outline-none focus:border-indigo-500 font-mono"
-                      />
-                    </div>
+                    <FloatInput
+                      id="registered-city"
+                      label="Registered City"
+                      value={formData.registeredCity || ""}
+                      onChange={(e) => setFormData({ ...formData, registeredCity: e.target.value })}
+                    />
+                    <FloatInput
+                      id="registered-state"
+                      label="Registered State"
+                      value={formData.registeredState || ""}
+                      onChange={(e) => setFormData({ ...formData, registeredState: e.target.value })}
+                    />
+                    <FloatInput
+                      id="postal-code"
+                      label="Postal Code"
+                      value={formData.registeredPostalCode || ""}
+                      onChange={(e) => setFormData({ ...formData, registeredPostalCode: e.target.value })}
+                    />
                   </div>
                 </div>
               )}
 
               {activeTab === "branding" && (
-                <div className="space-y-4 animate-in fade-in duration-150">
+                <div className="space-y-4 animate-in fade-in duration-150 pt-1">
                   <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-300 mb-1">
-                        Logo URL
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="https://..."
-                        value={formData.logoUrl || ""}
-                        onChange={(e) => setFormData({ ...formData, logoUrl: e.target.value })}
-                        className="w-full bg-[#141A2C] border border-[#202B44] rounded-xl px-4 py-2 text-xs text-white font-mono focus:outline-none focus:border-indigo-500"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-300 mb-1">
-                        Primary Color
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="#6366F1"
-                        value={formData.primaryColor || ""}
-                        onChange={(e) => setFormData({ ...formData, primaryColor: e.target.value })}
-                        className="w-full bg-[#141A2C] border border-[#202B44] rounded-xl px-4 py-2 text-xs text-white font-mono focus:outline-none focus:border-indigo-500"
-                      />
-                    </div>
+                    <FloatInput
+                      id="logo-url"
+                      label="Logo URL"
+                      value={formData.logoUrl || ""}
+                      onChange={(e) => setFormData({ ...formData, logoUrl: e.target.value })}
+                    />
+                    <FloatInput
+                      id="primary-color"
+                      label="Primary Color"
+                      value={formData.primaryColor || ""}
+                      onChange={(e) => setFormData({ ...formData, primaryColor: e.target.value })}
+                    />
                   </div>
                 </div>
               )}
 
               {activeTab === "settings" && (
-                <div className="space-y-4 animate-in fade-in duration-150">
+                <div className="space-y-4 animate-in fade-in duration-150 pt-1">
                   <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-300 mb-1">
-                        Initial Status
-                      </label>
-                      <select
-                        value={formData.status || "active"}
-                        onChange={(e) => setFormData({ ...formData, status: e.target.value as CompanyStatus })}
-                        className="w-full bg-[#141A2C] border border-[#202B44] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
-                      >
-                        <option value="active">Active</option>
-                        <option value="inactive">Inactive</option>
-                        <option value="pending">Pending</option>
-                        <option value="suspended">Suspended</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-300 mb-1">
-                        Default Currency
-                      </label>
-                      <select
-                        value={formData.defaultCurrency || "INR"}
-                        onChange={(e) => setFormData({ ...formData, defaultCurrency: e.target.value })}
-                        className="w-full bg-[#141A2C] border border-[#202B44] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500 font-mono"
-                      >
-                        <option value="INR">INR (₹)</option>
-                        <option value="USD">USD ($)</option>
-                        <option value="EUR">EUR (€)</option>
-                        <option value="GBP">GBP (£)</option>
-                      </select>
-                    </div>
+                    <FloatSelect
+                      id="initial-status"
+                      label="Initial Status"
+                      value={formData.status || "active"}
+                      onChange={(e) =>
+                        setFormData({ ...formData, status: e.target.value as CompanyStatus })
+                      }
+                    >
+                      <option value="active">Active</option>
+                      <option value="inactive">Inactive</option>
+                      <option value="pending">Pending</option>
+                      <option value="suspended">Suspended</option>
+                    </FloatSelect>
+                    <FloatSelect
+                      id="default-currency"
+                      label="Default Currency"
+                      value={formData.defaultCurrency || "INR"}
+                      onChange={(e) => setFormData({ ...formData, defaultCurrency: e.target.value })}
+                    >
+                      <option value="INR">INR (₹)</option>
+                      <option value="USD">USD ($)</option>
+                      <option value="EUR">EUR (€)</option>
+                      <option value="GBP">GBP (£)</option>
+                    </FloatSelect>
                   </div>
                 </div>
               )}

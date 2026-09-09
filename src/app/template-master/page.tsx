@@ -40,6 +40,8 @@ import {
   Ban,
 } from "lucide-react";
 import { generateNextCode } from "@/lib/codeGenerator";
+import { FloatInput, FloatSelect, FloatTextarea } from "@/components/FloatField";
+import AppToast, { type ToastType } from "@/components/AppToast";
 
 export default function TemplateMasterManagementPage() {
   const router = useRouter();
@@ -64,9 +66,9 @@ export default function TemplateMasterManagementPage() {
   const [formSubmitting, setFormSubmitting] = useState<boolean>(false);
 
   // Notification Banner
-  const [toast, setToast] = useState<{ type: "success" | "error"; msg: string } | null>(null);
+  const [toast, setToast] = useState<{ type: ToastType; msg: string } | null>(null);
 
-  const showToast = (type: "success" | "error", msg: string) => {
+  const showToast = (type: ToastType, msg: string) => {
     setToast({ type, msg });
     setTimeout(() => setToast(null), 4000);
   };
@@ -164,6 +166,21 @@ export default function TemplateMasterManagementPage() {
   // Submit Handler for Create & Update
   const handleSubmitForm = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    const missing: string[] = [];
+    if (!formData.companyId) missing.push("Company");
+    if (!formData.documentTypeId) missing.push("Document Type");
+    if (!formData.templateCode?.trim()) missing.push("Template Code");
+    if (!formData.templateName?.trim()) missing.push("Template Name");
+
+    if (missing.length) {
+      showToast(
+        "warning",
+        `Fill the required fields before saving: ${missing.join(", ")}.`
+      );
+      return;
+    }
+
     setFormSubmitting(true);
 
     const payload = cleanPayload({
@@ -309,26 +326,8 @@ export default function TemplateMasterManagementPage() {
           }`}
       >
         <div className="max-w-7xl mx-auto space-y-6">
-          {/* Notification Toast */}
           {toast && (
-            <div
-              className={`p-4 rounded-xl text-xs font-semibold shadow-2xl flex items-center justify-between border animate-in slide-in-from-top duration-200 ${toast.type === "success"
-                  ? "bg-emerald-950/90 text-emerald-200 border-emerald-500/40"
-                  : "bg-rose-950/90 text-rose-200 border-rose-500/40"
-                }`}
-            >
-              <div className="flex items-center gap-2">
-                {toast.type === "success" ? (
-                  <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                ) : (
-                  <AlertCircle className="w-4 h-4 text-rose-400" />
-                )}
-                <span>{toast.msg}</span>
-              </div>
-              <button onClick={() => setToast(null)}>
-                <X className="w-3.5 h-3.5 opacity-70 hover:opacity-100" />
-              </button>
-            </div>
+            <AppToast type={toast.type} message={toast.msg} onClose={() => setToast(null)} />
           )}
 
           {/* Page Header */}
@@ -422,52 +421,69 @@ export default function TemplateMasterManagementPage() {
           </div>
 
           {/* Filters & Actions Bar */}
-          <div className="glass-card p-4 rounded-2xl border border-[#1E2638] flex flex-col md:flex-row items-center justify-between gap-4">
-            <div className="flex flex-1 items-center gap-3 w-full md:w-auto">
-              {/* Search Bar */}
-              <div className="relative flex-1 max-w-md">
-                <Search className="w-4 h-4 text-slate-500 absolute left-3.5 top-3" />
-                <input
-                  type="text"
-                  placeholder="Search by template code, name, version, or description..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full bg-[#141A2C] border border-[#202B44] rounded-xl pl-9 pr-4 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
-                />
+          <div className="glass-card p-4 rounded-2xl border border-[#1E2638] flex flex-nowrap items-center justify-between gap-3">
+            <div className="flex items-center gap-3 shrink-0">
+              <div className={`page-filter float-field ${statusFilter !== "all" ? "is-filled" : ""}`}>
+                <Filter className="page-filter-icon" />
+                <select
+                  id="template-status-filter"
+                  value={statusFilter === "all" ? "" : statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value || "all")}
+                  className="float-input"
+                >
+                  <option value="" hidden disabled />
+                  <option value="active">Active</option>
+                  <option value="draft">Draft</option>
+                  <option value="inactive">Inactive</option>
+                  <option value="archived">Archived</option>
+                </select>
+                <label htmlFor="template-status-filter" className="float-label">
+                  Status
+                </label>
+                {statusFilter !== "all" && (
+                  <button
+                    type="button"
+                    className="page-filter-clear"
+                    onClick={() => setStatusFilter("all")}
+                    title="Clear filter"
+                    aria-label="Clear status filter"
+                  >
+                    <X />
+                  </button>
+                )}
               </div>
 
-              {/* Status Filter */}
-              <div className="flex items-center gap-2 bg-[#141A2C] border border-[#202B44] rounded-xl px-3 py-1.5">
-                <Filter className="w-3.5 h-3.5 text-slate-400" />
-                <select
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                  className="bg-transparent text-xs text-slate-200 focus:outline-none cursor-pointer"
-                >
-                  <option value="all" className="bg-[#141A2C]">All Statuses</option>
-                  <option value="active" className="bg-[#141A2C]">Active Only</option>
-                  <option value="draft" className="bg-[#141A2C]">Draft</option>
-                  <option value="inactive" className="bg-[#141A2C]">Inactive</option>
-                  <option value="archived" className="bg-[#141A2C]">Archived</option>
-                </select>
-              </div>
+              {selectedIds.length > 0 && (
+                <div className="flex items-center gap-3 animate-in fade-in">
+                  <span className="text-xs text-indigo-400 font-mono">
+                    {selectedIds.length} selected
+                  </span>
+                  <button
+                    onClick={handleBulkDelete}
+                    className="px-3 py-1.5 rounded-lg bg-rose-950/80 hover:bg-rose-900 border border-rose-500/40 text-rose-300 text-xs font-semibold flex items-center gap-1.5 transition-all"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Delete Selected</span>
+                  </button>
+                </div>
+              )}
             </div>
 
-            {/* Bulk Actions */}
-            {selectedIds.length > 0 && (
-              <div className="flex items-center gap-3 animate-in fade-in">
-                <span className="text-xs text-indigo-400 font-mono">
-                  {selectedIds.length} selected
-                </span>
-                <button
-                  onClick={handleBulkDelete}
-                  className="px-3 py-1.5 rounded-lg bg-rose-950/80 hover:bg-rose-900 border border-rose-500/40 text-rose-300 text-xs font-semibold flex items-center gap-1.5 transition-all"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                  <span>Delete Selected</span>
-                </button>
-              </div>
-            )}
+            <div className={`page-search float-field ${searchTerm ? "is-filled" : ""}`}>
+              <Search className="page-search-icon" />
+              <input
+                id="template-search"
+                type="text"
+                placeholder=" "
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="float-input"
+                autoComplete="off"
+              />
+              <label htmlFor="template-search" className="float-label">
+                Search templates
+              </label>
+            </div>
           </div>
 
           {/* Templates Data Table */}
@@ -650,7 +666,7 @@ export default function TemplateMasterManagementPage() {
       {/* CREATE / QUICK EDIT TEMPLATE MASTER MODAL */}
       {isFormModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-150">
-          <div className="bg-[#0F1424] border border-[#1E273E] w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden relative max-h-[90vh] flex flex-col">
+          <div className="float-form-modal bg-[#0F1424] border border-[#1E273E] w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden relative max-h-[90vh] flex flex-col">
             {/* Modal Header */}
             <div className="flex items-center justify-between p-5 border-b border-[#1E2638] bg-[#0C101D]">
               <div className="flex items-center gap-3">
@@ -675,138 +691,103 @@ export default function TemplateMasterManagementPage() {
             </div>
 
             {/* Form Body */}
-            <form onSubmit={handleSubmitForm} className="p-6 overflow-y-auto space-y-4 flex-1">
+            <form noValidate onSubmit={handleSubmitForm} className="p-6 pt-7 overflow-y-auto space-y-4 flex-1">
               <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">
-                    Select Company *
-                  </label>
-                  <select
-                    required
-                    value={formData.companyId}
-                    onChange={(e) => {
-                      const newCompId = Number(e.target.value);
-                      if (!editingTemplate) {
-                        const existingCodes = templates.map((t) => t.templateCode);
-                        const nextCode = generateNextCode("TMP", existingCodes, 3);
-                        setFormData({ ...formData, companyId: newCompId, templateCode: nextCode });
-                      } else {
-                        setFormData({ ...formData, companyId: newCompId });
-                      }
-                    }}
-                    className="w-full bg-[#141A2C] border border-[#202B44] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
-                  >
-                    {companies.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.companyName} ({c.companyCode})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">
-                    Select Document Type *
-                  </label>
-                  <select
-                    required
-                    value={formData.documentTypeId}
-                    onChange={(e) => setFormData({ ...formData, documentTypeId: Number(e.target.value) })}
-                    className="w-full bg-[#141A2C] border border-[#202B44] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
-                  >
-                    {documentTypes.map((dt) => (
-                      <option key={dt.id} value={dt.id}>
-                        {dt.documentTypeName} ({dt.documentTypeCode})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">
-                    Select Job Profile (Optional)
-                  </label>
-                  <select
-                    value={formData.profileId || ""}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        profileId: e.target.value ? Number(e.target.value) : null,
-                      })
-                    }
-                    className="w-full bg-[#141A2C] border border-[#202B44] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
-                  >
-                    <option value="">All Profiles (Global)</option>
-                    {profiles.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.profileName} ({p.profileCode})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">
-                    Template Code *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="TMP-OFFER-STD-01"
-                    value={formData.templateCode}
-                    onChange={(e) => setFormData({ ...formData, templateCode: e.target.value })}
-                    className="w-full bg-[#141A2C] border border-[#202B44] rounded-xl px-4 py-2 text-xs text-white font-mono focus:outline-none focus:border-indigo-500"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">
-                  Template Name *
-                </label>
-                <input
-                  type="text"
+                <FloatSelect
+                  id="tmpl-company"
+                  label="Select Company *"
                   required
-                  placeholder="e.g. Standard Employment Offer Template"
-                  value={formData.templateName}
-                  onChange={(e) => setFormData({ ...formData, templateName: e.target.value })}
-                  className="w-full bg-[#141A2C] border border-[#202B44] rounded-xl px-4 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
+                  value={String(formData.companyId)}
+                  onChange={(e) => {
+                    const newCompId = Number(e.target.value);
+                    if (!editingTemplate) {
+                      const existingCodes = templates.map((t) => t.templateCode);
+                      const nextCode = generateNextCode("TMP", existingCodes, 3);
+                      setFormData({ ...formData, companyId: newCompId, templateCode: nextCode });
+                    } else {
+                      setFormData({ ...formData, companyId: newCompId });
+                    }
+                  }}
+                >
+                  {companies.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.companyName} ({c.companyCode})
+                    </option>
+                  ))}
+                </FloatSelect>
+
+                <FloatSelect
+                  id="tmpl-doctype"
+                  label="Select Document Type *"
+                  required
+                  value={String(formData.documentTypeId)}
+                  onChange={(e) => setFormData({ ...formData, documentTypeId: Number(e.target.value) })}
+                >
+                  {documentTypes.map((dt) => (
+                    <option key={dt.id} value={dt.id}>
+                      {dt.documentTypeName} ({dt.documentTypeCode})
+                    </option>
+                  ))}
+                </FloatSelect>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <FloatSelect
+                  id="tmpl-profile"
+                  label="Select Job Profile"
+                  value={formData.profileId ? String(formData.profileId) : ""}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      profileId: e.target.value ? Number(e.target.value) : null,
+                    })
+                  }
+                >
+                  <option value="">All Profiles (Global)</option>
+                  {profiles.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.profileName} ({p.profileCode})
+                    </option>
+                  ))}
+                </FloatSelect>
+
+                <FloatInput
+                  id="tmpl-code"
+                  label="Template Code *"
+                  required
+                  value={formData.templateCode}
+                  onChange={(e) => setFormData({ ...formData, templateCode: e.target.value })}
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">
-                    Version Tag
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="1.0.0"
-                    value={formData.version || "1.0.0"}
-                    onChange={(e) => setFormData({ ...formData, version: e.target.value })}
-                    className="w-full bg-[#141A2C] border border-[#202B44] rounded-xl px-4 py-2 text-xs text-white font-mono focus:outline-none focus:border-indigo-500"
-                  />
-                </div>
+              <FloatInput
+                id="tmpl-name"
+                label="Template Name *"
+                required
+                value={formData.templateName}
+                onChange={(e) => setFormData({ ...formData, templateName: e.target.value })}
+              />
 
-                <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">
-                    Publish Status
-                  </label>
-                  <select
-                    value={formData.status || "draft"}
-                    onChange={(e) =>
-                      setFormData({ ...formData, status: e.target.value as TemplateMasterStatus })
-                    }
-                    className="w-full bg-[#141A2C] border border-[#202B44] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
-                  >
-                    <option value="draft">Draft</option>
-                    <option value="active">Active</option>
-                    <option value="inactive">Inactive</option>
-                    <option value="archived">Archived</option>
-                  </select>
-                </div>
+              <div className="grid grid-cols-2 gap-4">
+                <FloatInput
+                  id="tmpl-version"
+                  label="Version Tag"
+                  value={formData.version || "1.0.0"}
+                  onChange={(e) => setFormData({ ...formData, version: e.target.value })}
+                />
+                <FloatSelect
+                  id="tmpl-status"
+                  label="Publish Status"
+                  value={formData.status || "draft"}
+                  onChange={(e) =>
+                    setFormData({ ...formData, status: e.target.value as TemplateMasterStatus })
+                  }
+                >
+                  <option value="draft">Draft</option>
+                  <option value="active">Active</option>
+                  <option value="inactive">Inactive</option>
+                  <option value="archived">Archived</option>
+                </FloatSelect>
               </div>
 
               <div className="pt-1">
@@ -821,31 +802,19 @@ export default function TemplateMasterManagementPage() {
                 </label>
               </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">
-                  Template Description
-                </label>
-                <textarea
-                  rows={3}
-                  placeholder="Purpose, target audience, layout details..."
-                  value={formData.description || ""}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  className="w-full bg-[#141A2C] border border-[#202B44] rounded-xl px-4 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
-                ></textarea>
-              </div>
+              <FloatTextarea
+                id="tmpl-description"
+                label="Template Description"
+                value={formData.description || ""}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              />
 
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">
-                  Internal Remarks / Notes
-                </label>
-                <input
-                  type="text"
-                  placeholder="Administrative remarks..."
-                  value={formData.remark || ""}
-                  onChange={(e) => setFormData({ ...formData, remark: e.target.value })}
-                  className="w-full bg-[#141A2C] border border-[#202B44] rounded-xl px-4 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
-                />
-              </div>
+              <FloatInput
+                id="tmpl-remark"
+                label="Internal Remarks / Notes"
+                value={formData.remark || ""}
+                onChange={(e) => setFormData({ ...formData, remark: e.target.value })}
+              />
 
               {/* Modal Footer Controls */}
               <div className="pt-4 flex items-center justify-between border-t border-[#1E2638] mt-6">

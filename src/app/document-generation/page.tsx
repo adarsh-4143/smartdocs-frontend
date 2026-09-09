@@ -26,7 +26,11 @@ import {
   replacePlaceholders,
   extractPlaceholderKeys,
   downloadHtmlDocument,
+  isDesignerHtml,
 } from "@/lib/a4Preview";
+import { parseDesignerJson } from "@/lib/documentDesigner/serialize";
+import { pageSize } from "@/lib/documentDesigner/constants";
+import PreviewModal from "@/components/document-designer/PreviewModal";
 import {
   FileOutput,
   RefreshCw,
@@ -35,6 +39,7 @@ import {
   X,
   FileCode2,
   Search,
+  Filter,
   Download,
   Eye,
   Trash2,
@@ -340,6 +345,9 @@ export default function DocumentGenerationPage() {
     ? replacePlaceholders(templateContent.content, previewData)
     : "";
   const previewPages = getPaginatedPages(previewHtml);
+  const designerPreview = isDesignerHtml(previewHtml);
+  const designerPreviewSize = pageSize(parseDesignerJson(previewHtml)?.orientation || "portrait");
+  const designerPreviewScale = Math.min(1, 595 / designerPreviewSize.widthPx);
   const headerSrc = getImageUrl(
     templateContent?.headerImage ||
     (templateContent as any)?.header_image ||
@@ -484,14 +492,13 @@ export default function DocumentGenerationPage() {
   };
 
   const handleDownload = async (doc: GeneratedDocument) => {
-    try {
-      await generatedDocumentService.triggerDownload(doc.id, doc.fileName || `${doc.documentName}.pdf`);
-      showToast("success", "Download started.");
-    } catch (e: any) {
-      console.warn("Backend download failed, opening browser print / save dialog:", e?.message);
-      downloadHtmlDocument(doc.documentName, previewHtml || "<p>Document Content</p>", headerSrc, footerSrc);
-      showToast("success", "Opening PDF print & download dialog...");
-    }
+    downloadHtmlDocument(
+      doc.documentName,
+      previewHtml || "<p>Document Content</p>",
+      headerSrc,
+      footerSrc
+    );
+    showToast("success", "Save as PDF in the print dialog.");
   };
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -684,17 +691,27 @@ export default function DocumentGenerationPage() {
           </div>
 
           {/* ── STEP 1: Template Selector (full width) ─────────────────────── */}
-          <div className="glass-card p-5 rounded-2xl border border-[#1E2638] space-y-4">
-            <h2 className="text-xs font-bold text-slate-200 uppercase tracking-wider flex items-center gap-2">
-              <FileCode2 className="w-4 h-4 text-indigo-400" />
-              1 — Select Template
-            </h2>
-
-            <div className="relative max-w-sm">
-              <Search className="w-3.5 h-3.5 text-slate-500 absolute left-3 top-2.5" />
-              <input type="text" placeholder="Search templates..." value={templateSearch}
-                onChange={(e) => setTemplateSearch(e.target.value)}
-                className="w-full bg-[#141A2C] border border-[#202B44] rounded-xl pl-8 pr-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500" />
+          <div className="glass-card py-1.5 px-4 rounded-2xl border border-[#1E2638] space-y-2">
+            <div className="flex items-center justify-between gap-3 h-9">
+              <h2 className="text-xs font-bold text-slate-200 uppercase tracking-wider flex items-center gap-2 shrink-0 whitespace-nowrap leading-none m-0">
+                <FileCode2 className="w-4 h-4 text-indigo-400 shrink-0" />
+                1 — Select Template
+              </h2>
+              <div className={`page-search float-field !w-52 !max-w-52 !ml-0 ${templateSearch ? "is-filled" : ""}`}>
+                <Search className="page-search-icon" />
+                <input
+                  id="docgen-template-search"
+                  type="text"
+                  placeholder=" "
+                  value={templateSearch}
+                  onChange={(e) => setTemplateSearch(e.target.value)}
+                  className="float-input !h-9"
+                  autoComplete="off"
+                />
+                <label htmlFor="docgen-template-search" className="float-label">
+                  Search templates
+                </label>
+              </div>
             </div>
 
             {templatesLoading ? (
@@ -1089,33 +1106,63 @@ export default function DocumentGenerationPage() {
                     <Loader2 className="w-5 h-5 animate-spin text-indigo-500" /><span>Loading preview...</span>
                   </div>
                 ) : (
-                  <div className="w-full max-w-[595px] space-y-6 overflow-y-auto max-h-[800px]">
-                    {previewPages.map((pageHtml, pageIdx, pagesArr) => (
-                      <div key={pageIdx}
-                        className="bg-white text-slate-900 rounded shadow-2xl min-h-[842px] w-full border border-slate-300 font-sans leading-relaxed text-sm flex flex-col justify-between overflow-hidden relative">
+                  <div className={`w-full space-y-6 overflow-y-auto max-h-[800px] ${designerPreview ? "" : "max-w-[595px]"}`}>
+                    {previewPages.map((pageHtml, pageIdx, pagesArr) => {
+                      if (designerPreview) {
+                        return (
+                          <div
+                            key={pageIdx}
+                            className="relative mx-auto"
+                            style={{
+                              width: designerPreviewSize.widthPx * designerPreviewScale,
+                              height: designerPreviewSize.heightPx * designerPreviewScale,
+                            }}
+                          >
+                            <div
+                              className="origin-top-left overflow-hidden bg-white text-slate-900 rounded shadow-2xl border border-slate-300"
+                              style={{
+                                width: designerPreviewSize.widthPx,
+                                height: designerPreviewSize.heightPx,
+                                transform: `scale(${designerPreviewScale})`,
+                              }}
+                            >
+                              <div
+                                className="hrms-preview-page text-slate-900"
+                                dangerouslySetInnerHTML={{ __html: pageHtml }}
+                              />
+                            </div>
+                            <div className="absolute top-2 right-2 px-2 py-0.5 rounded bg-slate-900/80 text-white text-[9px] font-mono shadow z-10">
+                              Page {pageIdx + 1} of {pagesArr.length}
+                            </div>
+                          </div>
+                        );
+                      }
+                      return (
+                      <div
+                        key={pageIdx}
+                        className="bg-white text-slate-900 rounded shadow-2xl w-full border border-slate-300 font-sans leading-relaxed text-sm overflow-hidden relative"
+                        style={{ minHeight: 842 }}
+                      >
                         {headerSrc ? (
                           <div className="w-full shrink-0 overflow-hidden">
                             <img src={headerSrc} alt="Header" className="w-full h-auto block object-cover" />
                           </div>
-                        ) : (
-                          <div className="w-full p-3 bg-slate-100/50 border-b border-dashed border-slate-300 text-center text-[10px] font-mono text-slate-400 uppercase">Header Area</div>
-                        )}
-                        <div className="p-8 flex-1">
-                          <div className="prose prose-slate max-w-none text-slate-900"
+                        ) : null}
+                        <div className="p-8">
+                          <div className="prose prose-slate max-w-none text-slate-900 hrms-preview-page"
                             dangerouslySetInnerHTML={{ __html: pageHtml }} />
                         </div>
                         {footerSrc ? (
                           <div className="w-full shrink-0 overflow-hidden">
                             <img src={footerSrc} alt="Footer" className="w-full h-auto block object-cover" />
                           </div>
-                        ) : (
-                          <div className="w-full p-3 bg-slate-100/50 border-t border-dashed border-slate-300 text-center text-[10px] font-mono text-slate-400 uppercase">Footer Area</div>
-                        )}
+                        ) : null}
                         <div className="absolute top-2 right-2 px-2 py-0.5 rounded bg-slate-900/80 text-white text-[9px] font-mono shadow">
                           Page {pageIdx + 1} of {pagesArr.length}
                         </div>
                       </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -1124,30 +1171,60 @@ export default function DocumentGenerationPage() {
 
           {/* ── Generation History ─────────────────────────────────────────── */}
           <div className="glass-card rounded-2xl border border-[#1E2638] overflow-hidden">
-            <div className="p-5 border-b border-[#1E2638] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div>
-                <h2 className="text-sm font-bold text-white flex items-center gap-2">
-                  <Clock className="w-4 h-4 text-indigo-400" />
-                  Generation History
-                </h2>
-                <p className="text-[10px] text-slate-500 mt-0.5 font-mono">
-                  {filteredHistory.length} record{filteredHistory.length !== 1 ? "s" : ""}
-                </p>
-              </div>
-              <div className="flex items-center gap-3 flex-wrap">
-                <div className="relative">
-                  <Search className="w-3.5 h-3.5 text-slate-500 absolute left-3 top-2.5" />
-                  <input type="text" placeholder="Search records..." value={historySearch}
-                    onChange={(e) => setHistorySearch(e.target.value)}
-                    className="bg-[#141A2C] border border-[#202B44] rounded-lg pl-8 pr-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 w-48" />
+            <div className="p-4 border-b border-[#1E2638] flex flex-nowrap items-center justify-between gap-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <div>
+                  <h2 className="text-sm font-bold text-white flex items-center gap-2">
+                    <Clock className="w-4 h-4 text-indigo-400" />
+                    Generation History
+                  </h2>
+                  <p className="text-[10px] text-slate-500 mt-0.5 font-mono">
+                    {filteredHistory.length} record{filteredHistory.length !== 1 ? "s" : ""}
+                  </p>
                 </div>
-                <select value={historyStatusFilter} onChange={(e) => setHistoryStatusFilter(e.target.value)}
-                  className="bg-[#141A2C] border border-[#202B44] rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500 cursor-pointer">
-                  <option value="">All Statuses</option>
-                  <option value="COMPLETED">Completed</option>
-                  <option value="GENERATING">Generating</option>
-                  <option value="FAILED">Failed</option>
-                </select>
+                <div className={`page-filter float-field ${historyStatusFilter ? "is-filled" : ""}`}>
+                  <Filter className="page-filter-icon" />
+                  <select
+                    id="docgen-history-status"
+                    value={historyStatusFilter}
+                    onChange={(e) => setHistoryStatusFilter(e.target.value)}
+                    className="float-input"
+                  >
+                    <option value="" hidden disabled />
+                    <option value="COMPLETED">Completed</option>
+                    <option value="GENERATING">Generating</option>
+                    <option value="FAILED">Failed</option>
+                  </select>
+                  <label htmlFor="docgen-history-status" className="float-label">
+                    Status
+                  </label>
+                  {historyStatusFilter !== "" && (
+                    <button
+                      type="button"
+                      className="page-filter-clear"
+                      onClick={() => setHistoryStatusFilter("")}
+                      title="Clear filter"
+                      aria-label="Clear status filter"
+                    >
+                      <X />
+                    </button>
+                  )}
+                </div>
+              </div>
+              <div className={`page-search float-field shrink-0 !w-52 !max-w-52 ${historySearch ? "is-filled" : ""}`}>
+                <Search className="page-search-icon" />
+                <input
+                  id="docgen-history-search"
+                  type="text"
+                  placeholder=" "
+                  value={historySearch}
+                  onChange={(e) => setHistorySearch(e.target.value)}
+                  className="float-input"
+                  autoComplete="off"
+                />
+                <label htmlFor="docgen-history-search" className="float-label">
+                  Search records
+                </label>
               </div>
             </div>
 
@@ -1164,7 +1241,9 @@ export default function DocumentGenerationPage() {
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs text-slate-300">
-                  <thead className="bg-[#0B0E1B] text-slate-400 font-mono uppercase text-[10px] tracking-wider border-b border-[#1E2638]">
+                  <thead
+                    className="bg-[#0B0E1B] text-slate-400 font-mono uppercase text-[10px] tracking-wider border-b border-[#1E2638]"
+                  >
                     <tr>
                       <th className="py-3.5 px-4 font-bold">Document</th>
                       <th className="py-3.5 px-4 font-bold">Template</th>
@@ -1225,32 +1304,28 @@ export default function DocumentGenerationPage() {
         </div>
       </main>
 
-      {/* PDF Preview Modal */}
-      {showPdfModal && previewDocId && (
-        <div className="fixed inset-0 z-50 flex flex-col bg-black/90 backdrop-blur-md">
-          <div className="flex items-center justify-between px-5 py-3 bg-[#0C101D] border-b border-[#1E2638] shrink-0">
-            <div className="flex items-center gap-3">
-              <Eye className="w-4 h-4 text-indigo-400" />
-              <span className="text-sm font-bold text-white">PDF Preview</span>
-            </div>
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => {
-                  const doc = history.find((h) => h.id === previewDocId) || lastGenerated;
-                  if (doc) handleDownload(doc);
-                }}
-                className="px-4 py-1.5 rounded-lg bg-emerald-600/20 hover:bg-emerald-600/40 border border-emerald-500/30 text-emerald-300 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer">
-                <Download className="w-3.5 h-3.5" /> Download
-              </button>
-              <button onClick={() => { setShowPdfModal(false); setPreviewDocId(null); }}
-                className="p-1.5 rounded-lg bg-[#141A2B] text-slate-400 hover:text-white transition-colors">
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-          <iframe src={generatedDocumentService.getPreviewUrl(previewDocId)} className="flex-1 w-full" title="Generated PDF Preview" />
-        </div>
-      )}
+      <PreviewModal
+        open={showPdfModal}
+        html={previewHtml || "<p>Select a template to preview.</p>"}
+        orientation={parseDesignerJson(previewHtml)?.orientation || "portrait"}
+        title="PDF Preview"
+        extraActions={
+          <button
+            type="button"
+            onClick={() => {
+              const doc = history.find((h) => h.id === previewDocId) || lastGenerated;
+              if (doc) handleDownload(doc);
+            }}
+            className="px-4 py-1.5 rounded-lg bg-emerald-600/20 hover:bg-emerald-600/40 border border-emerald-500/30 text-emerald-300 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+          >
+            <Download className="w-3.5 h-3.5" /> Download
+          </button>
+        }
+        onClose={() => {
+          setShowPdfModal(false);
+          setPreviewDocId(null);
+        }}
+      />
 
       {/* Delete Confirmation Modal */}
       {deleteTarget && (

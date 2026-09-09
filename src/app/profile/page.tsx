@@ -21,7 +21,6 @@ import {
   Edit2,
   Trash2,
   Eye,
-  CheckCircle2,
   AlertCircle,
   Clock,
   X,
@@ -34,6 +33,8 @@ import {
 } from "lucide-react";
 
 import { generateNextCode } from "@/lib/codeGenerator";
+import { FloatInput, FloatSelect, FloatTextarea } from "@/components/FloatField";
+import AppToast, { type ToastType } from "@/components/AppToast";
 
 export default function ProfileManagementPage() {
   const router = useRouter();
@@ -56,11 +57,11 @@ export default function ProfileManagementPage() {
   const [formSubmitting, setFormSubmitting] = useState<boolean>(false);
 
   // Notification Banner
-  const [toast, setToast] = useState<{ type: "success" | "error"; msg: string } | null>(null);
+  const [toast, setToast] = useState<{ type: ToastType; msg: string } | null>(null);
 
-  const showToast = (type: "success" | "error", msg: string) => {
+  const showToast = (type: ToastType, msg: string) => {
     setToast({ type, msg });
-    setTimeout(() => setToast(null), 4000);
+    setTimeout(() => setToast(null), 4500);
   };
 
   // Clean payload helper
@@ -150,6 +151,20 @@ export default function ProfileManagementPage() {
   // Submit Handler for Create & Update
   const handleSubmitForm = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    const missing: string[] = [];
+    if (!formData.companyId) missing.push("Company");
+    if (!formData.profileCode?.trim()) missing.push("Profile Code");
+    if (!formData.profileName?.trim()) missing.push("Profile Name");
+
+    if (missing.length) {
+      showToast(
+        "warning",
+        `Fill the required fields before saving: ${missing.join(", ")}.`
+      );
+      return;
+    }
+
     setFormSubmitting(true);
 
     const payload = cleanPayload({
@@ -289,27 +304,8 @@ export default function ProfileManagementPage() {
         }`}
       >
         <div className="max-w-7xl mx-auto space-y-6">
-          {/* Notification Toast */}
           {toast && (
-            <div
-              className={`p-4 rounded-xl text-xs font-semibold shadow-2xl flex items-center justify-between border animate-in slide-in-from-top duration-200 ${
-                toast.type === "success"
-                  ? "bg-emerald-950/90 text-emerald-200 border-emerald-500/40"
-                  : "bg-rose-950/90 text-rose-200 border-rose-500/40"
-              }`}
-            >
-              <div className="flex items-center gap-2">
-                {toast.type === "success" ? (
-                  <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                ) : (
-                  <AlertCircle className="w-4 h-4 text-rose-400" />
-                )}
-                <span>{toast.msg}</span>
-              </div>
-              <button onClick={() => setToast(null)}>
-                <X className="w-3.5 h-3.5 opacity-70 hover:opacity-100" />
-              </button>
-            </div>
+            <AppToast type={toast.type} message={toast.msg} onClose={() => setToast(null)} />
           )}
 
           {/* Page Header */}
@@ -404,52 +400,69 @@ export default function ProfileManagementPage() {
 
           {/* Filters & Actions Bar */}
           <div className="glass-card p-4 rounded-2xl border border-[#1E2638] flex flex-col md:flex-row items-center justify-between gap-4">
-            <div className="flex flex-1 items-center gap-3 w-full md:w-auto">
-              {/* Search Bar */}
-              <div className="relative flex-1 max-w-md">
-                <Search className="w-4 h-4 text-slate-500 absolute left-3.5 top-3" />
-                <input
-                  type="text"
-                  placeholder="Search by profile code, name, department, or job title..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full bg-[#141A2C] border border-[#202B44] rounded-xl pl-9 pr-4 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
-                />
+            <div className="flex items-center gap-3 w-full md:w-auto">
+              <div className={`page-filter page-filter-lg float-field ${employmentFilter !== "all" ? "is-filled" : ""}`}>
+                <Filter className="page-filter-icon" />
+                <select
+                  id="profile-employment-filter"
+                  value={employmentFilter === "all" ? "" : employmentFilter}
+                  onChange={(e) => setEmploymentFilter(e.target.value || "all")}
+                  className="float-input"
+                >
+                  <option value="" hidden disabled />
+                  <option value="full_time">Full Time</option>
+                  <option value="part_time">Part Time</option>
+                  <option value="contract">Contract</option>
+                  <option value="intern">Intern</option>
+                  <option value="freelance">Freelance</option>
+                </select>
+                <label htmlFor="profile-employment-filter" className="float-label">
+                  Employment type
+                </label>
+                {employmentFilter !== "all" && (
+                  <button
+                    type="button"
+                    className="page-filter-clear"
+                    onClick={() => setEmploymentFilter("all")}
+                    title="Clear filter"
+                    aria-label="Clear employment type filter"
+                  >
+                    <X />
+                  </button>
+                )}
               </div>
 
-              {/* Employment Type Filter */}
-              <div className="flex items-center gap-2 bg-[#141A2C] border border-[#202B44] rounded-xl px-3 py-1.5">
-                <Filter className="w-3.5 h-3.5 text-slate-400" />
-                <select
-                  value={employmentFilter}
-                  onChange={(e) => setEmploymentFilter(e.target.value)}
-                  className="bg-transparent text-xs text-slate-200 focus:outline-none cursor-pointer"
-                >
-                  <option value="all" className="bg-[#141A2C]">All Employment Types</option>
-                  <option value="full_time" className="bg-[#141A2C]">Full Time</option>
-                  <option value="part_time" className="bg-[#141A2C]">Part Time</option>
-                  <option value="contract" className="bg-[#141A2C]">Contract</option>
-                  <option value="intern" className="bg-[#141A2C]">Intern</option>
-                  <option value="freelance" className="bg-[#141A2C]">Freelance</option>
-                </select>
-              </div>
+              {selectedIds.length > 0 && (
+                <div className="flex items-center gap-3 animate-in fade-in">
+                  <span className="text-xs text-indigo-400 font-mono">
+                    {selectedIds.length} selected
+                  </span>
+                  <button
+                    onClick={handleBulkDelete}
+                    className="px-3 py-1.5 rounded-lg bg-rose-950/80 hover:bg-rose-900 border border-rose-500/40 text-rose-300 text-xs font-semibold flex items-center gap-1.5 transition-all"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Delete Selected</span>
+                  </button>
+                </div>
+              )}
             </div>
 
-            {/* Bulk Actions */}
-            {selectedIds.length > 0 && (
-              <div className="flex items-center gap-3 animate-in fade-in">
-                <span className="text-xs text-indigo-400 font-mono">
-                  {selectedIds.length} selected
-                </span>
-                <button
-                  onClick={handleBulkDelete}
-                  className="px-3 py-1.5 rounded-lg bg-rose-950/80 hover:bg-rose-900 border border-rose-500/40 text-rose-300 text-xs font-semibold flex items-center gap-1.5 transition-all"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                  <span>Delete Selected</span>
-                </button>
-              </div>
-            )}
+            <div className={`page-search float-field ${searchTerm ? "is-filled" : ""}`}>
+              <Search className="page-search-icon" />
+              <input
+                id="profile-search"
+                type="text"
+                placeholder=" "
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="float-input"
+                autoComplete="off"
+              />
+              <label htmlFor="profile-search" className="float-label">
+                Search profiles
+              </label>
+            </div>
           </div>
 
           {/* Profiles Data Table */}
@@ -612,7 +625,7 @@ export default function ProfileManagementPage() {
       {/* CREATE / QUICK EDIT PROFILE MODAL */}
       {isFormModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-150">
-          <div className="bg-[#0F1424] border border-[#1E273E] w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden relative max-h-[90vh] flex flex-col">
+          <div className="float-form-modal bg-[#0F1424] border border-[#1E273E] w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden relative max-h-[90vh] flex flex-col">
             {/* Modal Header */}
             <div className="flex items-center justify-between p-5 border-b border-[#1E2638] bg-[#0C101D]">
               <div className="flex items-center gap-3">
@@ -637,155 +650,95 @@ export default function ProfileManagementPage() {
             </div>
 
             {/* Form Body */}
-            <form onSubmit={handleSubmitForm} className="p-6 overflow-y-auto space-y-4 flex-1">
+            <form noValidate onSubmit={handleSubmitForm} className="p-6 pt-7 overflow-y-auto space-y-4 flex-1">
               <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">
-                    Select Company *
-                  </label>
-                  <select
-                    required
-                    value={formData.companyId}
-                    onChange={(e) => setFormData({ ...formData, companyId: Number(e.target.value) })}
-                    className="w-full bg-[#141A2C] border border-[#202B44] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
-                  >
-                    {companies.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.companyName} ({c.companyCode})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">
-                    Profile Code *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="PROF-ENG-01"
-                    value={formData.profileCode}
-                    onChange={(e) => setFormData({ ...formData, profileCode: e.target.value })}
-                    className="w-full bg-[#141A2C] border border-[#202B44] rounded-xl px-4 py-2 text-xs text-white font-mono focus:outline-none focus:border-indigo-500"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">
-                  Profile Name *
-                </label>
-                <input
-                  type="text"
+                <FloatSelect
+                  id="profile-company"
+                  label="Select Company *"
                   required
-                  placeholder="e.g. Senior Software Engineer Profile"
-                  value={formData.profileName}
-                  onChange={(e) => setFormData({ ...formData, profileName: e.target.value })}
-                  className="w-full bg-[#141A2C] border border-[#202B44] rounded-xl px-4 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
+                  value={String(formData.companyId)}
+                  onChange={(e) => setFormData({ ...formData, companyId: Number(e.target.value) })}
+                >
+                  {companies.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.companyName} ({c.companyCode})
+                    </option>
+                  ))}
+                </FloatSelect>
+                <FloatInput
+                  id="profile-code"
+                  label="Profile Code *"
+                  required
+                  value={formData.profileCode}
+                  onChange={(e) => setFormData({ ...formData, profileCode: e.target.value })}
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">
-                    Job Title
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Lead Backend Developer"
-                    value={formData.jobTitle || ""}
-                    onChange={(e) => setFormData({ ...formData, jobTitle: e.target.value })}
-                    className="w-full bg-[#141A2C] border border-[#202B44] rounded-xl px-4 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
-                  />
-                </div>
+              <FloatInput
+                id="profile-name"
+                label="Profile Name *"
+                required
+                value={formData.profileName}
+                onChange={(e) => setFormData({ ...formData, profileName: e.target.value })}
+              />
 
-                <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">
-                    Department
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Engineering"
-                    value={formData.department || ""}
-                    onChange={(e) => setFormData({ ...formData, department: e.target.value })}
-                    className="w-full bg-[#141A2C] border border-[#202B44] rounded-xl px-4 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
-                  />
-                </div>
+              <div className="grid grid-cols-2 gap-4">
+                <FloatInput
+                  id="job-title"
+                  label="Job Title"
+                  value={formData.jobTitle || ""}
+                  onChange={(e) => setFormData({ ...formData, jobTitle: e.target.value })}
+                />
+                <FloatInput
+                  id="department"
+                  label="Department"
+                  value={formData.department || ""}
+                  onChange={(e) => setFormData({ ...formData, department: e.target.value })}
+                />
               </div>
 
               <div className="grid grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">
-                    Designation
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Senior Consultant"
-                    value={formData.designation || ""}
-                    onChange={(e) => setFormData({ ...formData, designation: e.target.value })}
-                    className="w-full bg-[#141A2C] border border-[#202B44] rounded-xl px-4 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">
-                    Job Level
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="L4"
-                    value={formData.jobLevel || ""}
-                    onChange={(e) => setFormData({ ...formData, jobLevel: e.target.value })}
-                    className="w-full bg-[#141A2C] border border-[#202B44] rounded-xl px-4 py-2 text-xs text-white focus:outline-none focus:border-indigo-500 font-mono"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">
-                    Employment Type
-                  </label>
-                  <select
-                    value={formData.employmentType || "full_time"}
-                    onChange={(e) =>
-                      setFormData({ ...formData, employmentType: e.target.value as EmploymentType })
-                    }
-                    className="w-full bg-[#141A2C] border border-[#202B44] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
-                  >
-                    <option value="full_time">Full Time</option>
-                    <option value="part_time">Part Time</option>
-                    <option value="contract">Contract</option>
-                    <option value="intern">Intern</option>
-                    <option value="freelance">Freelance</option>
-                  </select>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">
-                  Role Expectations & Description
-                </label>
-                <textarea
-                  rows={3}
-                  placeholder="Detailed job responsibilities, skills, and expectations..."
-                  value={formData.description || ""}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  className="w-full bg-[#141A2C] border border-[#202B44] rounded-xl px-4 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
-                ></textarea>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">
-                  Internal Remarks / Notes
-                </label>
-                <input
-                  type="text"
-                  placeholder="Administrative remarks..."
-                  value={formData.remark || ""}
-                  onChange={(e) => setFormData({ ...formData, remark: e.target.value })}
-                  className="w-full bg-[#141A2C] border border-[#202B44] rounded-xl px-4 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
+                <FloatInput
+                  id="designation"
+                  label="Designation"
+                  value={formData.designation || ""}
+                  onChange={(e) => setFormData({ ...formData, designation: e.target.value })}
                 />
+                <FloatInput
+                  id="job-level"
+                  label="Job Level"
+                  value={formData.jobLevel || ""}
+                  onChange={(e) => setFormData({ ...formData, jobLevel: e.target.value })}
+                />
+                <FloatSelect
+                  id="employment-type"
+                  label="Employment Type"
+                  value={formData.employmentType || "full_time"}
+                  onChange={(e) =>
+                    setFormData({ ...formData, employmentType: e.target.value as EmploymentType })
+                  }
+                >
+                  <option value="full_time">Full Time</option>
+                  <option value="part_time">Part Time</option>
+                  <option value="contract">Contract</option>
+                  <option value="intern">Intern</option>
+                  <option value="freelance">Freelance</option>
+                </FloatSelect>
               </div>
+
+              <FloatTextarea
+                id="profile-description"
+                label="Role Expectations & Description"
+                value={formData.description || ""}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              />
+
+              <FloatInput
+                id="profile-remark"
+                label="Internal Remarks / Notes"
+                value={formData.remark || ""}
+                onChange={(e) => setFormData({ ...formData, remark: e.target.value })}
+              />
 
               {/* Modal Footer Controls */}
               <div className="pt-4 flex items-center justify-between border-t border-[#1E2638] mt-6">

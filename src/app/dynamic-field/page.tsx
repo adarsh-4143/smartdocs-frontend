@@ -38,8 +38,9 @@ import {
   Sparkles,
   Copy,
   Check,
-  ChevronDown,
 } from "lucide-react";
+import { FloatInput, FloatSelect } from "@/components/FloatField";
+import AppToast, { type ToastType } from "@/components/AppToast";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -117,14 +118,14 @@ export default function DynamicFieldManagementPage() {
   const [deleteSubmitting, setDeleteSubmitting] = useState<boolean>(false);
 
   // ── Toast ───────────────────────────────────────────────────────────────────
-  const [toast, setToast] = useState<{ type: "success" | "error"; msg: string } | null>(null);
+  const [toast, setToast] = useState<{ type: ToastType; msg: string } | null>(null);
 
   // ── Key UX ──────────────────────────────────────────────────────────────────
   // Track whether user has manually edited the field key (to not auto-overwrite)
   const fieldKeyManuallyEdited = useRef<boolean>(false);
   const [copiedKey, setCopiedKey] = useState<boolean>(false);
 
-  const showToast = (type: "success" | "error", msg: string) => {
+  const showToast = (type: ToastType, msg: string) => {
     setToast({ type, msg });
     setTimeout(() => setToast(null), 4500);
   };
@@ -343,27 +344,8 @@ export default function DynamicFieldManagementPage() {
       >
         <div className="max-w-7xl mx-auto space-y-6">
 
-          {/* Toast Notification */}
           {toast && (
-            <div
-              className={`p-4 rounded-xl text-xs font-semibold shadow-2xl flex items-center justify-between border animate-in slide-in-from-top duration-200 ${
-                toast.type === "success"
-                  ? "bg-emerald-950/90 text-emerald-200 border-emerald-500/40"
-                  : "bg-rose-950/90 text-rose-200 border-rose-500/40"
-              }`}
-            >
-              <div className="flex items-center gap-2">
-                {toast.type === "success" ? (
-                  <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                ) : (
-                  <AlertCircle className="w-4 h-4 text-rose-400" />
-                )}
-                <span>{toast.msg}</span>
-              </div>
-              <button onClick={() => setToast(null)}>
-                <X className="w-3.5 h-3.5 opacity-70 hover:opacity-100" />
-              </button>
-            </div>
+            <AppToast type={toast.type} message={toast.msg} onClose={() => setToast(null)} />
           )}
 
           {/* Page Header */}
@@ -442,98 +424,164 @@ export default function DynamicFieldManagementPage() {
           </div>
 
           {/* Filters & Search Bar */}
-          <div className="glass-card p-4 rounded-2xl border border-[#1E2638] space-y-3">
-            <div className="flex flex-wrap items-center gap-3">
-              {/* Search */}
-              <div className="relative flex-1 min-w-[220px] max-w-sm">
-                <Search className="w-4 h-4 text-slate-500 absolute left-3.5 top-2.5" />
-                <input
-                  type="text"
-                  placeholder="Search field name, key, description..."
-                  value={searchTerm}
-                  onChange={(e) => handleSearchChange(e.target.value)}
-                  className="w-full bg-[#141A2C] border border-[#202B44] rounded-xl pl-9 pr-4 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
-                />
+          <div className="glass-card p-4 rounded-2xl border border-[#1E2638] flex flex-nowrap items-center justify-between gap-3">
+            <div className="flex items-center gap-3 shrink-0">
+              <div className={`page-filter float-field ${fieldTypeFilter !== "all" ? "is-filled" : ""}`}>
+                <Filter className="page-filter-icon" />
+                <select
+                  id="df-type-filter"
+                  value={fieldTypeFilter === "all" ? "" : fieldTypeFilter}
+                  onChange={(e) => setFieldTypeFilter(e.target.value || "all")}
+                  className="float-input"
+                >
+                  <option value="" hidden disabled />
+                  {FIELD_TYPES.map((ft) => (
+                    <option key={ft.value} value={ft.value}>
+                      {ft.label}
+                    </option>
+                  ))}
+                </select>
+                <label htmlFor="df-type-filter" className="float-label">
+                  Field Type
+                </label>
+                {fieldTypeFilter !== "all" && (
+                  <button
+                    type="button"
+                    className="page-filter-clear"
+                    onClick={() => setFieldTypeFilter("all")}
+                    title="Clear filter"
+                    aria-label="Clear field type filter"
+                  >
+                    <X />
+                  </button>
+                )}
               </div>
 
-              <div className="flex items-center gap-2 text-slate-400">
-                <Filter className="w-3.5 h-3.5" />
-                <span className="text-[10px] font-mono uppercase tracking-wider">Filters</span>
+              <div className={`page-filter float-field ${dataSourceFilter !== "all" ? "is-filled" : ""}`}>
+                <Filter className="page-filter-icon" />
+                <select
+                  id="df-source-filter"
+                  value={dataSourceFilter === "all" ? "" : dataSourceFilter}
+                  onChange={(e) => setDataSourceFilter(e.target.value || "all")}
+                  className="float-input"
+                >
+                  <option value="" hidden disabled />
+                  {DATA_SOURCES.map((ds) => (
+                    <option key={ds.value} value={ds.value}>
+                      {ds.label}
+                    </option>
+                  ))}
+                </select>
+                <label htmlFor="df-source-filter" className="float-label">
+                  Data Source
+                </label>
+                {dataSourceFilter !== "all" && (
+                  <button
+                    type="button"
+                    className="page-filter-clear"
+                    onClick={() => setDataSourceFilter("all")}
+                    title="Clear filter"
+                    aria-label="Clear data source filter"
+                  >
+                    <X />
+                  </button>
+                )}
               </div>
 
-              {/* Field Type */}
-              <select
-                value={fieldTypeFilter}
-                onChange={(e) => setFieldTypeFilter(e.target.value)}
-                className="bg-[#141A2C] border border-[#202B44] rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 cursor-pointer"
-              >
-                <option value="all" className="bg-[#141A2C]">All Field Types</option>
-                {FIELD_TYPES.map((ft) => (
-                  <option key={ft.value} value={ft.value} className="bg-[#141A2C]">
-                    {ft.value} — {ft.label}
-                  </option>
-                ))}
-              </select>
+              <div className={`page-filter float-field ${docTypeFilter !== "all" ? "is-filled" : ""}`}>
+                <Filter className="page-filter-icon" />
+                <select
+                  id="df-doctype-filter"
+                  value={docTypeFilter === "all" ? "" : docTypeFilter}
+                  onChange={(e) => setDocTypeFilter(e.target.value || "all")}
+                  className="float-input"
+                >
+                  <option value="" hidden disabled />
+                  {documentTypes.map((dt) => (
+                    <option key={dt.id} value={dt.id}>
+                      {dt.documentTypeName}
+                    </option>
+                  ))}
+                </select>
+                <label htmlFor="df-doctype-filter" className="float-label">
+                  Document Type
+                </label>
+                {docTypeFilter !== "all" && (
+                  <button
+                    type="button"
+                    className="page-filter-clear"
+                    onClick={() => setDocTypeFilter("all")}
+                    title="Clear filter"
+                    aria-label="Clear document type filter"
+                  >
+                    <X />
+                  </button>
+                )}
+              </div>
 
-              {/* Data Source */}
-              <select
-                value={dataSourceFilter}
-                onChange={(e) => setDataSourceFilter(e.target.value)}
-                className="bg-[#141A2C] border border-[#202B44] rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 cursor-pointer"
-              >
-                <option value="all" className="bg-[#141A2C]">All Data Sources</option>
-                {DATA_SOURCES.map((ds) => (
-                  <option key={ds.value} value={ds.value} className="bg-[#141A2C]">
-                    {ds.value} — {ds.label}
-                  </option>
-                ))}
-              </select>
+              <div className={`page-filter float-field ${activeFilter !== "all" ? "is-filled" : ""}`}>
+                <Filter className="page-filter-icon" />
+                <select
+                  id="df-status-filter"
+                  value={activeFilter === "all" ? "" : activeFilter}
+                  onChange={(e) => setActiveFilter(e.target.value || "all")}
+                  className="float-input"
+                >
+                  <option value="" hidden disabled />
+                  <option value="active">Active</option>
+                  <option value="inactive">Inactive</option>
+                </select>
+                <label htmlFor="df-status-filter" className="float-label">
+                  Status
+                </label>
+                {activeFilter !== "all" && (
+                  <button
+                    type="button"
+                    className="page-filter-clear"
+                    onClick={() => setActiveFilter("all")}
+                    title="Clear filter"
+                    aria-label="Clear status filter"
+                  >
+                    <X />
+                  </button>
+                )}
+              </div>
 
-              {/* Document Type */}
-              <select
-                value={docTypeFilter}
-                onChange={(e) => setDocTypeFilter(e.target.value)}
-                className="bg-[#141A2C] border border-[#202B44] rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 cursor-pointer"
-              >
-                <option value="all" className="bg-[#141A2C]">All Documents</option>
-                {documentTypes.map((dt) => (
-                  <option key={dt.id} value={dt.id} className="bg-[#141A2C]">
-                    {dt.documentTypeName}
-                  </option>
-                ))}
-              </select>
-
-              {/* Status */}
-              <select
-                value={activeFilter}
-                onChange={(e) => setActiveFilter(e.target.value)}
-                className="bg-[#141A2C] border border-[#202B44] rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 cursor-pointer"
-              >
-                <option value="all"      className="bg-[#141A2C]">All Statuses</option>
-                <option value="active"   className="bg-[#141A2C]">Active</option>
-                <option value="inactive" className="bg-[#141A2C]">Inactive</option>
-              </select>
+              {selectedIds.length > 0 && (
+                <div className="flex items-center gap-3 animate-in fade-in">
+                  <span className="text-xs text-indigo-400 font-mono">{selectedIds.length} selected</span>
+                  <button
+                    onClick={handleBulkDelete}
+                    className="px-3 py-1.5 rounded-lg bg-rose-950/80 hover:bg-rose-900 border border-rose-500/40 text-rose-300 text-xs font-semibold flex items-center gap-1.5 transition-all"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Delete Selected</span>
+                  </button>
+                  <button
+                    onClick={() => setSelectedIds([])}
+                    className="text-xs text-slate-500 hover:text-slate-300 transition-colors"
+                  >
+                    Clear Selection
+                  </button>
+                </div>
+              )}
             </div>
 
-            {/* Bulk Actions */}
-            {selectedIds.length > 0 && (
-              <div className="flex items-center gap-3 pt-2 border-t border-[#1E2638] animate-in fade-in">
-                <span className="text-xs text-indigo-400 font-mono">{selectedIds.length} selected</span>
-                <button
-                  onClick={handleBulkDelete}
-                  className="px-3 py-1.5 rounded-lg bg-rose-950/80 hover:bg-rose-900 border border-rose-500/40 text-rose-300 text-xs font-semibold flex items-center gap-1.5 transition-all"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                  <span>Delete Selected</span>
-                </button>
-                <button
-                  onClick={() => setSelectedIds([])}
-                  className="text-xs text-slate-500 hover:text-slate-300 transition-colors"
-                >
-                  Clear Selection
-                </button>
-              </div>
-            )}
+            <div className={`page-search float-field shrink-0 !w-52 !max-w-52 ${searchTerm ? "is-filled" : ""}`}>
+              <Search className="page-search-icon" />
+              <input
+                id="df-search"
+                type="text"
+                placeholder=" "
+                value={searchTerm}
+                onChange={(e) => handleSearchChange(e.target.value)}
+                className="float-input"
+                autoComplete="off"
+              />
+              <label htmlFor="df-search" className="float-label">
+                Search dynamic fields
+              </label>
+            </div>
           </div>
 
           {/* Dynamic Fields Table */}
@@ -730,8 +778,8 @@ export default function DynamicFieldManagementPage() {
           CREATE / EDIT DYNAMIC FIELD MODAL
       ═══════════════════════════════════════════════════════════════════════ */}
       {isFormModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-start justify-center pt-12 px-4 pb-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-150 overflow-y-auto">
-          <div className="bg-[#0F1424] border border-[#1E273E] w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden relative">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-150">
+          <div className="float-form-modal bg-[#0F1424] border border-[#1E273E] w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden relative max-h-[90vh] flex flex-col">
             {/* Modal Header */}
             <div className="flex items-center justify-between p-5 border-b border-[#1E2638] bg-[#0C101D]">
               <div className="flex items-center gap-3">
@@ -758,43 +806,32 @@ export default function DynamicFieldManagementPage() {
             </div>
 
             {/* Form Body */}
-            <form onSubmit={handleSubmitForm} className="p-6 space-y-5 overflow-y-auto max-h-[75vh]">
+            <form noValidate onSubmit={handleSubmitForm} className="p-6 pt-7 overflow-y-auto space-y-4 flex-1">
 
               {/* Field Name & Field Key (linked) */}
               <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">
-                    Field Name <span className="text-rose-400">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g. Employee Name"
-                    value={formData.fieldName}
-                    onChange={(e) => handleFieldNameChange(e.target.value)}
-                    className="w-full bg-[#141A2C] border border-[#202B44] rounded-xl px-4 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
-                  />
-                </div>
+                <FloatInput
+                  id="df-field-name"
+                  label="Field Name *"
+                  required
+                  value={formData.fieldName}
+                  onChange={(e) => handleFieldNameChange(e.target.value)}
+                />
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">
-                    Field Key <span className="text-rose-400">*</span>
-                    <span className="text-[10px] text-slate-500 font-normal ml-1">(snake_case)</span>
-                  </label>
                   <div className="relative">
-                    <input
-                      type="text"
+                    <FloatInput
+                      id="df-field-key"
+                      label="Field Key *"
                       required
-                      placeholder="e.g. employee_name"
                       value={formData.fieldKey}
                       onChange={(e) => handleFieldKeyChange(e.target.value)}
-                      className="w-full bg-[#141A2C] border border-[#202B44] rounded-xl px-4 py-2 pr-9 text-xs text-white font-mono focus:outline-none focus:border-indigo-500"
                     />
                     {formData.fieldKey && (
                       <button
                         type="button"
                         onClick={copyFieldKey}
-                        className="absolute right-2 top-1.5 p-1 text-slate-500 hover:text-indigo-400 transition-colors"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-500 hover:text-indigo-400 transition-colors z-10"
                         title="Copy template placeholder"
                       >
                         {copiedKey ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
@@ -876,67 +913,45 @@ export default function DynamicFieldManagementPage() {
                 </div>
               </div>
 
-              {/* Document Type (optional) */}
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">
-                  Document Type
-                  <span className="text-[10px] text-slate-500 font-normal ml-1">
-                    (Optional — leave blank to apply across all document types)
-                  </span>
-                </label>
-                <select
-                  value={formData.documentTypeId ?? ""}
-                  onChange={(e) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      documentTypeId: e.target.value ? Number(e.target.value) : null,
-                    }))
-                  }
-                  className="w-full bg-[#141A2C] border border-[#202B44] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
-                >
-                  <option value="" className="bg-[#141A2C]">All Documents (Global Field)</option>
-                  {documentTypes.map((dt) => (
-                    <option key={dt.id} value={dt.id} className="bg-[#141A2C]">
-                      {dt.documentTypeName} ({dt.documentTypeCode})
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <FloatSelect
+                id="df-doc-type"
+                label="Document Type"
+                value={formData.documentTypeId != null ? String(formData.documentTypeId) : ""}
+                onChange={(e) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    documentTypeId: e.target.value ? Number(e.target.value) : null,
+                  }))
+                }
+              >
+                <option value="">All Documents (Global Field)</option>
+                {documentTypes.map((dt) => (
+                  <option key={dt.id} value={dt.id}>
+                    {dt.documentTypeName} ({dt.documentTypeCode})
+                  </option>
+                ))}
+              </FloatSelect>
 
-              {/* Description */}
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">Description</label>
-                <input
-                  type="text"
-                  placeholder="Brief explanation of this field's purpose..."
-                  value={formData.description || ""}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
-                  className="w-full bg-[#141A2C] border border-[#202B44] rounded-xl px-4 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
-                />
-              </div>
+              <FloatInput
+                id="df-description"
+                label="Description"
+                value={formData.description || ""}
+                onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
+              />
 
-              {/* Default Value + Placeholder */}
               <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">Default Value</label>
-                  <input
-                    type="text"
-                    placeholder="Optional default..."
-                    value={formData.defaultValue || ""}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, defaultValue: e.target.value }))}
-                    className="w-full bg-[#141A2C] border border-[#202B44] rounded-xl px-4 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">Placeholder Text</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Enter employee name"
-                    value={formData.placeholder || ""}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, placeholder: e.target.value }))}
-                    className="w-full bg-[#141A2C] border border-[#202B44] rounded-xl px-4 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
-                  />
-                </div>
+                <FloatInput
+                  id="df-default-value"
+                  label="Default Value"
+                  value={formData.defaultValue || ""}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, defaultValue: e.target.value }))}
+                />
+                <FloatInput
+                  id="df-placeholder"
+                  label="Placeholder Text"
+                  value={formData.placeholder || ""}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, placeholder: e.target.value }))}
+                />
               </div>
 
               {/* Toggles */}
@@ -976,7 +991,7 @@ export default function DynamicFieldManagementPage() {
               </div>
 
               {/* Modal Footer */}
-              <div className="pt-2 flex items-center justify-between border-t border-[#1E2638]">
+              <div className="pt-4 flex items-center justify-between border-t border-[#1E2638] mt-6">
                 <p className="text-[10px] text-slate-500 font-mono">
                   {editingField ? "Preserve field_key unless explicitly changed." : "Field key uniqueness is validated by the backend."}
                 </p>

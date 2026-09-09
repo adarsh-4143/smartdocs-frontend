@@ -26,9 +26,6 @@ export default function ShortcutCards({
       title: "Generate Document",
       desc: "Quickly generate a new document",
       icon: FilePlus,
-      colorBg: "bg-indigo-950/70",
-      iconColor: "text-indigo-400",
-      borderColor: "hover:border-indigo-500/50",
       onClick: () => onOpenModal("document"),
     },
     {
@@ -36,9 +33,6 @@ export default function ShortcutCards({
       title: "Create Template",
       desc: "Create a new document template",
       icon: FileCode2,
-      colorBg: "bg-cyan-950/70",
-      iconColor: "text-cyan-400",
-      borderColor: "hover:border-cyan-500/50",
       onClick: () => onOpenModal("template"),
     },
     {
@@ -46,9 +40,6 @@ export default function ShortcutCards({
       title: "Add Employee",
       desc: "Add employee / recipient details",
       icon: UserPlus,
-      colorBg: "bg-purple-950/70",
-      iconColor: "text-purple-400",
-      borderColor: "hover:border-purple-500/50",
       onClick: () => onOpenModal("employee"),
     },
     {
@@ -56,9 +47,6 @@ export default function ShortcutCards({
       title: "Add Company",
       desc: "Add / manage company scope",
       icon: Building2,
-      colorBg: "bg-emerald-950/70",
-      iconColor: "text-emerald-400",
-      borderColor: "hover:border-emerald-500/50",
       onClick: () => onOpenModal("company"),
     },
     {
@@ -66,9 +54,6 @@ export default function ShortcutCards({
       title: "Manage Templates",
       desc: "Go directly to template presets",
       icon: FolderKanban,
-      colorBg: "bg-blue-950/70",
-      iconColor: "text-blue-400",
-      borderColor: "hover:border-blue-500/50",
       onClick: () => onOpenModal("template"),
     },
     {
@@ -76,9 +61,6 @@ export default function ShortcutCards({
       title: "Generated Documents",
       desc: "View all generated documents",
       icon: Files,
-      colorBg: "bg-amber-950/70",
-      iconColor: "text-amber-400",
-      borderColor: "hover:border-amber-500/50",
       onClick: onScrollToTable,
     },
   ];
@@ -86,7 +68,7 @@ export default function ShortcutCards({
   return (
     <div className="mb-8">
       <div className="flex items-center justify-between mb-3">
-        <h2 className="text-xs font-mono font-bold uppercase tracking-wider text-slate-400">
+        <h2 className="text-xs font-bold uppercase tracking-wider text-slate-400">
           Quick Actions & Operations
         </h2>
       </div>
@@ -98,13 +80,11 @@ export default function ShortcutCards({
             <button
               key={sc.id}
               onClick={sc.onClick}
-              className={`glass-card p-4 rounded-xl text-left border border-[#1E2638] ${sc.borderColor} transition-all duration-200 group flex flex-col justify-between hover:translate-y-[-2px] hover:shadow-lg`}
+              className="glass-card p-4 rounded-xl text-left border border-[#1E2638] hover:border-[#3f5f59]/50 transition-all duration-200 group flex flex-col justify-between hover:translate-y-[-2px] hover:shadow-lg"
             >
               <div className="flex items-center justify-between mb-3">
-                <div
-                  className={`w-9 h-9 rounded-lg ${sc.colorBg} border border-white/5 flex items-center justify-center group-hover:scale-110 transition-transform`}
-                >
-                  <Icon className={`w-4 h-4 ${sc.iconColor}`} />
+                <div className="dash-icon-box group-hover:scale-110 transition-transform">
+                  <Icon />
                 </div>
                 <ArrowUpRight className="w-4 h-4 text-slate-600 group-hover:text-slate-300 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all" />
               </div>

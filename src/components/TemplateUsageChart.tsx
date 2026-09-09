@@ -5,11 +5,11 @@ import { Layers, ArrowRight } from "lucide-react";
 
 export default function TemplateUsageChart() {
   const templates = [
-    { name: "Software Developer Offer Letter", count: 182, max: 200, barClass: "bg-gradient-to-r from-indigo-600 to-blue-500" },
-    { name: "BDE Offer Letter", count: 121, max: 200, barClass: "bg-gradient-to-r from-blue-500 to-cyan-400" },
-    { name: "Experience Letter", count: 82, max: 200, barClass: "bg-gradient-to-r from-cyan-400 to-teal-400" },
-    { name: "Salary Certificate", count: 64, max: 200, barClass: "bg-gradient-to-r from-purple-500 to-indigo-500" },
-    { name: "Intern Offer Letter", count: 51, max: 200, barClass: "bg-gradient-to-r from-slate-400 to-indigo-400" },
+    { name: "Software Developer Offer Letter", count: 182, max: 200, barClass: "bg-[#3f5f59]" },
+    { name: "BDE Offer Letter", count: 121, max: 200, barClass: "bg-[#4a6f68]" },
+    { name: "Experience Letter", count: 82, max: 200, barClass: "bg-[#6d8f87]" },
+    { name: "Salary Certificate", count: 64, max: 200, barClass: "bg-[#7d9e97]" },
+    { name: "Intern Offer Letter", count: 51, max: 200, barClass: "bg-[#8aa8a1]" },
   ];
 
   return (
