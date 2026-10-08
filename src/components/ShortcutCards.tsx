@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import Link from "next/link";
 import {
   FilePlus,
   FileCode2,
@@ -11,57 +12,49 @@ import {
   ArrowUpRight,
 } from "lucide-react";
 
-interface ShortcutCardsProps {
-  onOpenModal: (type: "document" | "template" | "employee" | "company") => void;
-  onScrollToTable: () => void;
-}
-
-export default function ShortcutCards({
-  onOpenModal,
-  onScrollToTable,
-}: ShortcutCardsProps) {
+export default function ShortcutCards() {
   const shortcuts = [
     {
       id: "generate",
       title: "Generate Document",
-      desc: "Quickly generate a new document",
+      desc: "Go to document generator page",
       icon: FilePlus,
-      onClick: () => onOpenModal("document"),
+      href: "/document-generation",
     },
     {
       id: "create_template",
       title: "Create Template",
-      desc: "Create a new document template",
+      desc: "Build new A4 template layout",
       icon: FileCode2,
-      onClick: () => onOpenModal("template"),
+      href: "/template-builder",
     },
     {
       id: "add_employee",
-      title: "Add Employee",
-      desc: "Add employee / recipient details",
+      title: "Add Profiles",
+      desc: "Manage employee profiles",
       icon: UserPlus,
-      onClick: () => onOpenModal("employee"),
+      href: "/profile",
     },
     {
       id: "add_company",
       title: "Add Company",
-      desc: "Add / manage company scope",
+      desc: "Manage corporate entities",
       icon: Building2,
-      onClick: () => onOpenModal("company"),
+      href: "/company",
     },
     {
       id: "manage_templates",
       title: "Manage Templates",
-      desc: "Go directly to template presets",
+      desc: "View preset master templates",
       icon: FolderKanban,
-      onClick: () => onOpenModal("template"),
+      href: "/template-master",
     },
     {
       id: "view_documents",
-      title: "Generated Documents",
-      desc: "View all generated documents",
+      title: "Generated History",
+      desc: "View and print all documents",
       icon: Files,
-      onClick: onScrollToTable,
+      href: "/generated-history",
     },
   ];
 
@@ -77,9 +70,9 @@ export default function ShortcutCards({
         {shortcuts.map((sc) => {
           const Icon = sc.icon;
           return (
-            <button
+            <Link
               key={sc.id}
-              onClick={sc.onClick}
+              href={sc.href}
               className="glass-card p-4 rounded-xl text-left border border-[#1E2638] hover:border-[#3f5f59]/50 transition-all duration-200 group flex flex-col justify-between hover:translate-y-[-2px] hover:shadow-lg"
             >
               <div className="flex items-center justify-between mb-3">
@@ -97,7 +90,7 @@ export default function ShortcutCards({
                   {sc.desc}
                 </p>
               </div>
-            </button>
+            </Link>
           );
         })}
       </div>

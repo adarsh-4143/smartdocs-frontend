@@ -15,6 +15,8 @@ const buildQuery = (filters: GeneratedDocumentFilters): string => {
   const params = new URLSearchParams();
   if (filters.templateId != null) params.set("templateId", String(filters.templateId));
   if (filters.status) params.set("status", filters.status);
+  if (filters.companyId != null) params.set("companyId", String(filters.companyId));
+  if (filters.profileId != null) params.set("profileId", String(filters.profileId));
   const qs = params.toString();
   return qs ? `?${qs}` : "";
 };

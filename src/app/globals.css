@@ -19,19 +19,19 @@
   }
 
   html.light {
-    --background: #f3efe6;
-    --foreground: #2a261f;
-    --card-bg: #fffdf8;
-    --card-border: #ddd4c6;
-    --sidebar-bg: #fffdf8;
-    --input-bg: #f3efe6;
-    --input-border: #ddd4c6;
-    --text-primary: #2a261f;
-    --text-secondary: #6f675c;
-    --text-muted: #6f675c;
-    --accent: #3f5f59;
-    --accent-strong: #34524d;
-    --accent-soft: #e4eee9;
+    --background: #f8fafc;
+    --foreground: #0f172a;
+    --card-bg: #ffffff;
+    --card-border: #e2e8f0;
+    --sidebar-bg: #ffffff;
+    --input-bg: #ffffff;
+    --input-border: #cbd5e1;
+    --text-primary: #0f172a;
+    --text-secondary: #334155;
+    --text-muted: #475569;
+    --accent: #2563eb;
+    --accent-strong: #1d4ed8;
+    --accent-soft: #eff6ff;
   }
 
   body {
@@ -122,8 +122,15 @@ html.light .gradient-btn:hover {
 }
 
 @keyframes pulse-slow {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.4;
+  }
 }
 
 .animate-pulse-slow {
@@ -224,7 +231,7 @@ html.light aside {
 }
 
 html.light aside span.text-transparent {
-  background-image: linear-gradient(to right, #2a261f, #6f675c, #3f5f59) !important;
+  background-image: linear-gradient(to right, #2a261f, #4a443a, #3f5f59) !important;
   -webkit-background-clip: text !important;
   background-clip: text !important;
   color: transparent !important;
@@ -249,15 +256,25 @@ html.light .text-slate-200 {
 }
 
 html.light .text-slate-300 {
-  color: #6f675c !important;
+  color: #4a443a !important;
 }
 
 html.light .text-slate-400 {
-  color: #6f675c !important;
+  color: #4a443a !important;
 }
 
 html.light .text-slate-500 {
-  color: #8a8378 !important;
+  color: #5c554a !important;
+}
+
+html.light .text-gray-400,
+html.light .text-zinc-400 {
+  color: #4a443a !important;
+}
+
+html.light .text-gray-500,
+html.light .text-zinc-500 {
+  color: #5c554a !important;
 }
 
 html.light .text-indigo-300,
@@ -270,16 +287,22 @@ html.light [class*="text-[#8aa8a1]"] {
   color: #3f5f59 !important;
 }
 
+html.light [class*="text-[#8A99AD]"] {
+  color: #4a443a !important;
+}
+
 html.light .gradient-btn,
 html.light .gradient-btn *,
-html.light .bg-indigo-600,
-html.light .bg-indigo-600 *,
-html.light .bg-indigo-500,
-html.light .bg-indigo-500 *,
-html.light .bg-blue-600,
-html.light .bg-blue-600 *,
-html.light [class*="bg-indigo-600"] *,
-html.light [class*="bg-blue-600"] * {
+html.light button.bg-indigo-600,
+html.light button.bg-indigo-600 *,
+html.light button.bg-indigo-500,
+html.light button.bg-indigo-500 *,
+html.light button.bg-emerald-600,
+html.light button.bg-emerald-600 *,
+html.light button.bg-cyan-600,
+html.light button.bg-cyan-600 *,
+html.light [class*="bg-[#3f5f59]"],
+html.light [class*="bg-[#3f5f59]"] * {
   color: #f7f4ee !important;
 }
 
@@ -309,6 +332,7 @@ html.light textarea {
   background-color: #f3efe6 !important;
   color: #2a261f !important;
   border-color: #ddd4c6 !important;
+  font-weight: 500;
 }
 
 html.light select option {
@@ -323,7 +347,7 @@ html.light textarea:focus {
 }
 
 html.light ::placeholder {
-  color: #8a8378 !important;
+  color: #6f675c !important;
 }
 
 html.light [class*="bg-[#070911]"],
@@ -388,7 +412,7 @@ html.light [class*="divide-[#1E2638]"] {
 html.light thead,
 html.light th {
   background-color: #f3efe6 !important;
-  color: #6f675c !important;
+  color: #4a443a !important;
   border-color: #ddd4c6 !important;
 }
 
@@ -714,6 +738,7 @@ html.light .status-badge-fail {
 }
 
 @media (prefers-reduced-motion: reduce) {
+
   .theme-toggle-track,
   .theme-toggle-knob,
   .theme-toggle-end {
@@ -804,8 +829,8 @@ html.light .float-form-modal {
   transform: none;
 }
 
-.float-input:focus ~ .float-label,
-.float-input:not(:placeholder-shown) ~ .float-label,
+.float-input:focus~.float-label,
+.float-input:not(:placeholder-shown)~.float-label,
 .float-field.is-filled .float-label {
   top: 0;
   transform: translateY(-50%);
@@ -849,6 +874,7 @@ html.light .float-form-modal {
 }
 
 @media (max-width: 767px) {
+
   .page-search,
   .page-filter {
     max-width: 100%;
@@ -890,13 +916,13 @@ html.light .page-filter {
   left: 38px;
 }
 
-.page-search .float-input:focus ~ .float-label,
-.page-search .float-input:not(:placeholder-shown) ~ .float-label,
+.page-search .float-input:focus~.float-label,
+.page-search .float-input:not(:placeholder-shown)~.float-label,
 .page-search.is-filled .float-label {
   left: 12px;
 }
 
-.page-filter:not(.is-filled) select.float-input:not(:focus) ~ .float-label {
+.page-filter:not(.is-filled) select.float-input:not(:focus)~.float-label {
   top: 50%;
   left: 38px;
   transform: translateY(-50%);
@@ -906,7 +932,7 @@ html.light .page-filter {
   background: transparent;
 }
 
-.page-filter select.float-input:focus ~ .float-label,
+.page-filter select.float-input:focus~.float-label,
 .page-filter.is-filled .float-label {
   top: 0;
   left: 12px;
@@ -923,9 +949,9 @@ html.light .page-filter {
   color: #2a261f !important;
 }
 
-.page-search .float-input:focus ~ .float-label,
-.page-search.is-filled .float-input:focus ~ .float-label,
-.page-filter .float-input:focus ~ .float-label,
+.page-search .float-input:focus~.float-label,
+.page-search.is-filled .float-input:focus~.float-label,
+.page-filter .float-input:focus~.float-label,
 .page-filter.is-filled .float-label {
   color: #3f5f59;
   background: var(--float-card);
@@ -1035,11 +1061,11 @@ html.light .float-form-modal .float-label {
   color: var(--float-muted);
 }
 
-html.light .company-form-modal .float-input:focus ~ .float-label,
-html.light .company-form-modal .float-input:not(:placeholder-shown) ~ .float-label,
+html.light .company-form-modal .float-input:focus~.float-label,
+html.light .company-form-modal .float-input:not(:placeholder-shown)~.float-label,
 html.light .company-form-modal .float-field.is-filled .float-label,
-html.light .float-form-modal .float-input:focus ~ .float-label,
-html.light .float-form-modal .float-input:not(:placeholder-shown) ~ .float-label,
+html.light .float-form-modal .float-input:focus~.float-label,
+html.light .float-form-modal .float-input:not(:placeholder-shown)~.float-label,
 html.light .float-form-modal .float-field.is-filled .float-label {
   color: var(--float-accent);
   background: var(--float-card);
@@ -1067,6 +1093,7 @@ html.light .float-form-modal .float-field.is-filled .float-label {
     opacity: 0;
     transform: translateY(-10px) translateX(8px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0) translateX(0);

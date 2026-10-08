@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Building2, Plus, ChevronDown, Sparkles, LogOut } from "lucide-react";
+import Link from "next/link";
 import ThemeToggle from "@/components/ThemeToggle";
 
 interface HeaderProps {
@@ -94,15 +95,15 @@ export default function Header({
         </div>
 
         {/* Generate Document Action Button */}
-        <button
-          onClick={onOpenGenerateModal}
+        <Link
+          href="/document-generation"
           className="gradient-btn flex items-center gap-2.5 px-5 py-2.5 rounded-xl text-white font-semibold text-sm cursor-pointer"
         >
           <div className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center">
             <Plus className="w-3.5 h-3.5 text-white" />
           </div>
           <span>Generate Document</span>
-        </button>
+        </Link>
       </div>
     </header>
   );

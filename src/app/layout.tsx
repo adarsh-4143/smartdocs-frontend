@@ -8,6 +8,7 @@ const roboto = Roboto({
   variable: "--font-geist-sans",
   subsets: ["latin"],
   weight: ["300", "400", "500", "700", "900"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -28,7 +29,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${roboto.variable} ${roboto.className} h-full antialiased`}
+      className={`${roboto.variable} ${roboto.className} light h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
         <ThemeProvider>

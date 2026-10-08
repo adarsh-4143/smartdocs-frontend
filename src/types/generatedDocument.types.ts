@@ -40,6 +40,8 @@ export interface GenerateDocumentPayload {
 export interface GeneratedDocumentFilters {
   templateId?: number | null;
   status?: GenerationStatus | "";
+  companyId?: number | null;
+  profileId?: number | null;
 }
 
 // ─── Phase 5E — Dynamic Data Auto-Fill ───────────────────────────────────────

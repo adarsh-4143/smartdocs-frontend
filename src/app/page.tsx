@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useRef } from "react";
+import { useRouter } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
 import Header from "@/components/Header";
 import ShortcutCards from "@/components/ShortcutCards";
@@ -12,102 +13,106 @@ import GenerationStatusPie from "@/components/GenerationStatusPie";
 import RecentDocumentsTable, { DocumentItem } from "@/components/RecentDocumentsTable";
 import ActivityFeed, { ActivityItem } from "@/components/ActivityFeed";
 import Modals from "@/components/Modals";
+import { dashboardService, DashboardStatsData } from "@/services/dashboard.service";
+import { RefreshCw } from "lucide-react";
 
 export default function CorporateDashboardPage() {
   const [collapsed, setCollapsed] = useState(false);
   const [activeTab, setActiveTab] = useState("dashboard");
-  const [selectedCompany, setSelectedCompany] = useState("Nighwan Technology");
-  const companies = ["Nighwan Technology", "ABC Technologies", "Global Corp"];
+  const [selectedCompany, setSelectedCompany] = useState("All Companies");
+  const [companies, setCompanies] = useState<string[]>(["All Companies"]);
+  const [stats, setStats] = useState<DashboardStatsData | null>(null);
 
   const [activeModal, setActiveModal] = useState<"document" | "template" | "employee" | "company" | null>(null);
+  const [loading, setLoading] = useState(true);
 
   const tableRef = useRef<HTMLDivElement>(null);
 
   // Dynamic KPI Data
   const [kpiData, setKpiData] = useState({
-    totalDocuments: 1248,
-    generatedThisMonth: 184,
-    templates: 42,
-    activeTemplates: 37,
-    draftDocuments: 16,
-    failedDocuments: 3,
+    totalDocuments: 0,
+    generatedThisMonth: 0,
+    templates: 0,
+    activeTemplates: 0,
+    draftDocuments: 0,
+    failedDocuments: 0,
   });
 
-  // Recent Documents initial state
-  const [documents, setDocuments] = useState<DocumentItem[]>([
-    {
-      id: "OL-2026-00124",
-      type: "Offer Letter",
-      recipient: "Rahul Kumar",
-      template: "Developer OL",
-      status: "Generated",
-      timestamp: "2 min ago",
-    },
-    {
-      id: "PS-2026-00421",
-      type: "Payslip",
-      recipient: "Amit Singh",
-      template: "Monthly Payslip",
-      status: "Sent",
-      timestamp: "10 min ago",
-    },
-    {
-      id: "QT-2026-00081",
-      type: "Quotation",
-      recipient: "ABC Pvt Ltd",
-      template: "Standard Quote",
-      status: "Generated",
-      timestamp: "25 min ago",
-    },
-    {
-      id: "EXP-2026-00032",
-      type: "Experience Letter",
-      recipient: "Priya Sharma",
-      template: "Standard Exp Letter",
-      status: "Draft",
-      timestamp: "45 min ago",
-    },
-    {
-      id: "OL-2026-00123",
-      type: "Offer Letter",
-      recipient: "Vikas Patel",
-      template: "BDE Offer Letter",
-      status: "Failed",
-      timestamp: "1 hour ago",
-    },
-  ]);
+  // Fetch real database dashboard data
+  const fetchDashboardData = React.useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await dashboardService.getDashboardStats();
+      if (data) {
+        setStats(data);
+        if (data.companiesList && data.companiesList.length > 0) {
+          setCompanies(["All Companies", ...data.companiesList]);
+        }
+        if (data.kpi) {
+          setKpiData({
+            totalDocuments: data.kpi.totalGeneratedDocs || 0,
+            generatedThisMonth: data.kpi.completedDocs || 0,
+            templates: data.kpi.totalTemplates || 0,
+            activeTemplates: data.kpi.totalDocumentTypes || 0,
+            draftDocuments: data.kpi.pendingDocs || 0,
+            failedDocuments: data.kpi.failedDocs || 0,
+          });
+        }
 
-  // Activity Feed
-  const [activities, setActivities] = useState<ActivityItem[]>([
-    {
-      id: "act-1",
-      title: "Offer Letter generated",
-      subtitle: "Rahul Kumar",
-      timestamp: "2 minutes ago",
-      type: "generated",
-    },
-    {
-      id: "act-2",
-      title: "Template updated",
-      subtitle: "Software Developer Offer Letter",
-      timestamp: "15 minutes ago",
-      type: "updated",
-    },
-    {
-      id: "act-3",
-      title: "Document sent",
-      subtitle: "Amit Singh",
-      timestamp: "25 minutes ago",
-      type: "sent",
-    },
-    {
-      id: "act-4",
-      title: "New template created",
-      subtitle: "BDE Offer Letter",
-      timestamp: "1 hour ago",
-      type: "created",
-    },
-  ]);
+        if (data.recentActivity && data.recentActivity.length > 0) {
+          setDocuments(
+            data.recentActivity.map((item) => ({
+              id: `DOC-#${item.id}`,
+              type: item.templateName || "Document",
+              recipient: item.profileName || "Employee",
+              template: item.companyName || "Company",
+              status: item.status === "Completed" ? "Generated" : item.status === "Failed" ? "Failed" : "Draft",
+              timestamp: item.createdAt
+                ? new Date(item.createdAt).toLocaleDateString("en-IN", {
+                    day: "numeric",
+                    month: "short",
+                    year: "numeric",
+                  })
+                : "Recent",
+            }))
+          );
+
+          setActivities(
+            data.recentActivity.map((item) => ({
+              id: `act-${item.id}`,
+              title: `${item.templateName || "Document"} generated`,
+              subtitle: `${item.profileName} • ${item.companyName}`,
+              timestamp: item.createdAt
+                ? new Date(item.createdAt).toLocaleDateString("en-IN", {
+                    day: "numeric",
+                    month: "short",
+                  })
+                : "Just now",
+              type: "generated",
+            }))
+          );
+        } else {
+          setDocuments([]);
+          setActivities([]);
+        }
+      }
+    } catch (e) {
+      setDocuments([]);
+      setActivities([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  React.useEffect(() => {
+    fetchDashboardData();
+  }, [fetchDashboardData]);
+
+  // Recent Documents initial state (100% Dynamic - default empty)
+  const [documents, setDocuments] = useState<DocumentItem[]>([]);
+
+  // Activity Feed initial state (100% Dynamic - default empty)
+  const [activities, setActivities] = useState<ActivityItem[]>([]);
 
   const handleOpenModal = (type: "document" | "template" | "employee" | "company") => {
     setActiveModal(type);
@@ -181,8 +186,10 @@ export default function CorporateDashboardPage() {
     }
   };
 
+  const router = useRouter();
+
   const handleTableAction = (action: string, doc: DocumentItem) => {
-    alert(`${action} triggered for Document ID: ${doc.id} (${doc.recipient})`);
+    router.push("/generated-history");
   };
 
   return (
@@ -208,23 +215,40 @@ export default function CorporateDashboardPage() {
             companies={companies}
           />
 
+          {/* Live Sync Bar */}
+          <div className="flex items-center justify-between px-1 -mt-4">
+            <div className="flex items-center gap-2 font-mono text-[11px] text-slate-400">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              <span>Live Database Connected (MySQL)</span>
+            </div>
+
+            <button
+              onClick={fetchDashboardData}
+              disabled={loading}
+              className="flex items-center gap-1.5 text-xs font-semibold text-slate-300 hover:text-white px-3 py-1.5 rounded-lg bg-[#141A2C] border border-[#202B44] hover:border-[#3f5f59] transition-all cursor-pointer"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin text-indigo-400" : ""}`} />
+              <span>Sync Metrics</span>
+            </button>
+          </div>
+
           {/* 1. Top 6 Shortcut / Action Cards */}
-          <ShortcutCards
-            onOpenModal={handleOpenModal}
-            onScrollToTable={handleScrollToTable}
-          />
+          <ShortcutCards />
 
           {/* 2. Main KPI Cards */}
           <KPICards kpiData={kpiData} />
 
           {/* 3. Primary Graph — Document Generation Trend */}
-          <GenerationTrendChart />
+          <GenerationTrendChart monthlyStats={stats?.monthlyStats} />
 
           {/* 4 & 5. Document Type Distribution & Template Usage */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <DocumentTypeDonut />
-            <TemplateUsageChart />
-            <GenerationStatusPie />
+            <DocumentTypeDonut
+              distribution={stats?.documentTypeDistribution}
+              totalDocs={kpiData.totalDocuments}
+            />
+            <TemplateUsageChart templateUsage={stats?.templateUsage} />
+            <GenerationStatusPie statusDistribution={stats?.statusDistribution} />
           </div>
 
           {/* 7 & 8. Recent Documents Table + Quick Activity Feed */}

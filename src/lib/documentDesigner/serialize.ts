@@ -416,7 +416,7 @@ export function extractDesignerPageHtml(html: string): string[] {
   try {
     const parser = new DOMParser();
     const parsed = parser.parseFromString(fresh, "text/html");
-    const pages = Array.from(parsed.querySelectorAll(".hrms-a4-page"));
+    const pages = Array.from(parsed.querySelectorAll<HTMLElement>(".hrms-a4-page"));
     if (pages.length === 0) return [fresh];
     const style = parsed.querySelector(".hrms-a4-document style")?.outerHTML || "";
     return pages.map((page) => {

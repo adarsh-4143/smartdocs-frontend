@@ -184,6 +184,7 @@ export default function DocumentGenerationPage() {
   // ── PDF Preview Modal ───────────────────────────────────────────────────────
   const [showPdfModal, setShowPdfModal] = useState(false);
   const [previewDocId, setPreviewDocId] = useState<number | null>(null);
+  const [modalPreviewHtml, setModalPreviewHtml] = useState<string>("");
 
   // ── History ─────────────────────────────────────────────────────────────────
   const [history, setHistory] = useState<GeneratedDocument[]>([]);
@@ -442,6 +443,7 @@ export default function DocumentGenerationPage() {
         outputFormat: "pdf",
         status: "COMPLETED",
         generatedAt: new Date().toISOString(),
+        generatedData: effectiveData,
         template: tmpl ? {
           id: tmpl.id,
           templateCode: tmpl.templateCode,
@@ -457,8 +459,40 @@ export default function DocumentGenerationPage() {
   };
 
   // ─────────────────────────────────────────────────────────────────────────
-  // History actions
+  // History actions & Helper for rendering document-specific HTML
   // ─────────────────────────────────────────────────────────────────────────
+  const getDocRenderedHtml = useCallback(async (doc: GeneratedDocument): Promise<{ html: string; header?: string | null; footer?: string | null }> => {
+    const docData = doc.generatedData || {};
+    if (doc.templateId) {
+      try {
+        const content = doc.templateId === selectedTemplateId && templateContent
+          ? templateContent
+          : await templateBuilderService.getContentByTemplateId(doc.templateId);
+
+        if (content?.content) {
+          const rendered = replacePlaceholders(content.content, docData);
+          const h = getImageUrl(
+            content.headerImage ||
+            (content as any)?.header_image ||
+            (content as any)?.headerImageUrl ||
+            (content as any)?.header_image_url
+          );
+          const f = getImageUrl(
+            content.footerImage ||
+            (content as any)?.footer_image ||
+            (content as any)?.footerImageUrl ||
+            (content as any)?.footer_image_url
+          );
+          return { html: rendered, header: h, footer: f };
+        }
+      } catch (e) {
+        console.warn("Failed to load template content for doc:", e);
+      }
+    }
+
+    return { html: previewHtml || "<p>Document Content</p>", header: headerSrc, footer: footerSrc };
+  }, [selectedTemplateId, templateContent, previewHtml, headerSrc, footerSrc]);
+
   const handleRegenerate = async (doc: GeneratedDocument) => {
     setRegeneratingId(doc.id);
     try {
@@ -492,14 +526,29 @@ export default function DocumentGenerationPage() {
   };
 
   const handleDownload = async (doc: GeneratedDocument) => {
+    const { html, header, footer } = await getDocRenderedHtml(doc);
     downloadHtmlDocument(
       doc.documentName,
-      previewHtml || "<p>Document Content</p>",
-      headerSrc,
-      footerSrc
+      html,
+      header,
+      footer
     );
     showToast("success", "Save as PDF in the print dialog.");
   };
+
+  useEffect(() => {
+    if (!showPdfModal) return;
+
+    const doc = history.find((h) => h.id === previewDocId) || (lastGenerated?.id === previewDocId ? lastGenerated : null);
+
+    if (doc) {
+      getDocRenderedHtml(doc).then((res) => {
+        setModalPreviewHtml(res.html);
+      });
+    } else {
+      setModalPreviewHtml(previewHtml || "<p>Select a template to preview.</p>");
+    }
+  }, [showPdfModal, previewDocId, history, lastGenerated, previewHtml, getDocRenderedHtml]);
 
   // ─────────────────────────────────────────────────────────────────────────
   // Filtered lists
@@ -1306,8 +1355,8 @@ export default function DocumentGenerationPage() {
 
       <PreviewModal
         open={showPdfModal}
-        html={previewHtml || "<p>Select a template to preview.</p>"}
-        orientation={parseDesignerJson(previewHtml)?.orientation || "portrait"}
+        html={modalPreviewHtml || previewHtml || "<p>Select a template to preview.</p>"}
+        orientation={parseDesignerJson(modalPreviewHtml || previewHtml)?.orientation || "portrait"}
         title="PDF Preview"
         extraActions={
           <button

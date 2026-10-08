@@ -22,6 +22,13 @@ class ApiClient {
       ...(options.headers as Record<string, string>),
     };
 
+    if (typeof window !== "undefined") {
+      const token = localStorage.getItem("adminToken");
+      if (token && !headers["Authorization"] && !headers["authorization"]) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+    }
+
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), API_CONFIG.TIMEOUT);
 

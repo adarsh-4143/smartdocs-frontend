@@ -48,32 +48,39 @@ export default function ActivityFeed({ activities }: ActivityFeedProps) {
         </div>
 
         {/* Timeline Items */}
-        <div className="relative pl-6 space-y-5 before:content-[''] before:absolute before:left-2.5 before:top-2 before:bottom-2 before:w-[2px] before:bg-[#1E2638]">
-          {activities.map((act) => {
-            const style = getIcon(act.type);
-            const Icon = style.icon;
-            return (
-              <div key={act.id} className="relative group">
-                {/* Timeline Dot Badge */}
-                <div
-                  className={`absolute -left-6 top-0 w-5 h-5 rounded-full ${style.bg} border flex items-center justify-center -translate-x-1/2`}
-                >
-                  <Icon className="w-2.5 h-2.5" />
-                </div>
+        {activities.length > 0 ? (
+          <div className="relative pl-6 space-y-5 before:content-[''] before:absolute before:left-2.5 before:top-2 before:bottom-2 before:w-[2px] before:bg-[#1E2638]">
+            {activities.map((act) => {
+              const style = getIcon(act.type);
+              const Icon = style.icon;
+              return (
+                <div key={act.id} className="relative group">
+                  {/* Timeline Dot Badge */}
+                  <div
+                    className={`absolute -left-6 top-0 w-5 h-5 rounded-full ${style.bg} border flex items-center justify-center -translate-x-1/2`}
+                  >
+                    <Icon className="w-2.5 h-2.5" />
+                  </div>
 
-                <div>
-                  <h3 className="text-xs font-bold text-slate-200 group-hover:text-indigo-300 transition-colors">
-                    {act.title}
-                  </h3>
-                  <p className="text-xs text-slate-400 mt-0.5">{act.subtitle}</p>
-                  <span className="text-[10px] text-slate-500 font-mono mt-1 block">
-                    {act.timestamp}
-                  </span>
+                  <div>
+                    <h3 className="text-xs font-bold text-slate-200 group-hover:text-indigo-300 transition-colors">
+                      {act.title}
+                    </h3>
+                    <p className="text-xs text-slate-400 mt-0.5">{act.subtitle}</p>
+                    <span className="text-[10px] text-slate-500 font-mono mt-1 block">
+                      {act.timestamp}
+                    </span>
+                  </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="py-12 text-center text-slate-500 text-xs font-mono space-y-1">
+            <p>No recent system activity yet.</p>
+            <p className="text-[10px] text-slate-600">Events will appear here as documents are generated.</p>
+          </div>
+        )}
       </div>
 
       <div className="pt-4 mt-4 border-t border-[#1E2638] text-[11px] text-slate-500 text-center font-mono">

@@ -12,16 +12,20 @@ interface ThemeContextType {
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setTheme] = useState<Theme>("dark");
+  const [theme, setTheme] = useState<Theme>("light");
 
   useEffect(() => {
-    // Load saved theme or system preference
+    // Default to light theme unless explicitly set to dark by user
     const savedTheme = localStorage.getItem("docgen_theme") as Theme | null;
-    if (savedTheme === "light" || savedTheme === "dark") {
-      setTheme(savedTheme);
-      document.documentElement.classList.toggle("light", savedTheme === "light");
-    } else {
+    if (savedTheme === "dark") {
+      setTheme("dark");
       document.documentElement.classList.remove("light");
+    } else {
+      setTheme("light");
+      document.documentElement.classList.add("light");
+      if (!savedTheme) {
+        localStorage.setItem("docgen_theme", "light");
+      }
     }
   }, []);
 
@@ -29,7 +33,11 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     setTheme((prev) => {
       const nextTheme = prev === "dark" ? "light" : "dark";
       localStorage.setItem("docgen_theme", nextTheme);
-      document.documentElement.classList.toggle("light", nextTheme === "light");
+      if (nextTheme === "light") {
+        document.documentElement.classList.add("light");
+      } else {
+        document.documentElement.classList.remove("light");
+      }
       return nextTheme;
     });
   };

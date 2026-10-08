@@ -13,6 +13,8 @@ import {
   FileCode2,
   PenTool,
   FileOutput,
+  FileClock,
+  Settings,
   ChevronLeft,
   ChevronRight,
   ShieldCheck,
@@ -99,6 +101,22 @@ export default function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
         pathname === "/document-generation" ||
         pathname?.startsWith("/document-generation"),
     },
+    {
+      href: "/generated-history",
+      label: "Generated History",
+      icon: FileClock,
+      isActive:
+        pathname === "/generated-history" ||
+        pathname?.startsWith("/generated-history"),
+    },
+    {
+      href: "/settings",
+      label: "Settings",
+      icon: Settings,
+      isActive:
+        pathname === "/settings" ||
+        pathname?.startsWith("/settings"),
+    },
   ];
 
   return (
@@ -108,9 +126,9 @@ export default function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
       }`}
     >
       {/* Top Header & Brand */}
-      <div>
+      <div className={`flex-1 flex flex-col min-h-0 ${collapsed ? "overflow-visible" : "overflow-hidden"}`}>
         <div
-          className={`border-b border-[#1E2638] transition-all ${
+          className={`border-b border-[#1E2638] transition-all shrink-0 ${
             collapsed
               ? "py-4 px-2 flex flex-col items-center gap-3"
               : "h-20 px-4 flex items-center justify-between"
@@ -160,13 +178,14 @@ export default function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
         </div>
 
         {/* Navigation items */}
-        <nav className="p-3 space-y-1.5 mt-2">
+        <nav className={`p-3 space-y-1.5 mt-2 flex-1 overflow-y-auto ${collapsed ? "overflow-x-visible" : "overflow-x-hidden"}`}>
           {navItems.map((item) => {
             const Icon = item.icon;
             return (
               <Link
                 key={item.href}
                 href={item.href}
+                title={collapsed ? item.label : undefined}
                 className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl font-medium text-sm transition-all duration-200 group relative ${
                   item.isActive
                     ? "bg-[#2d3633] text-white border border-[#3f5f59]/40 shadow-sm"
@@ -186,7 +205,7 @@ export default function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
                 {!collapsed ? (
                   <span className="truncate">{item.label}</span>
                 ) : (
-                  <div className="absolute left-full ml-3 px-3 py-1.5 bg-[#141A29] text-white text-xs rounded-md shadow-xl whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity border border-[#232D42] z-50">
+                  <div className="absolute left-full top-1/2 -translate-y-1/2 ml-3 px-3 py-1.5 bg-[#141A29] text-white text-xs font-bold rounded-lg shadow-2xl whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity border border-[#232D42] z-50">
                     {item.label}
                   </div>
                 )}
