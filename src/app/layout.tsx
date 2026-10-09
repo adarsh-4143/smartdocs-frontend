@@ -15,9 +15,9 @@ export const metadata: Metadata = {
   title: "DOCGEN - Universal Document Generator",
   description: "Enterprise Document & Offer Letter Generation Platform",
   icons: {
-    icon: "/logo.png",
-    shortcut: "/logo.png",
-    apple: "/logo.png",
+    icon: "/favicon.ico",
+    shortcut: "/favicon.ico",
+    apple: "/icon.png",
   },
 };
 

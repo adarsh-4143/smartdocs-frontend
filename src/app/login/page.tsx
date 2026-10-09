@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { useTheme } from "@/components/ThemeProvider";
 import DocumentScene from "@/components/login/DocumentScene";
+import Image from "next/image";
 import "./login.css";
 
 export default function AdminLoginPage() {
@@ -135,6 +136,16 @@ export default function AdminLoginPage() {
         <div className={`login-form w-full ${formOpen ? "is-open" : ""}`}>
           <div className="login-card rounded-2xl p-8 sm:p-10">
             <div className="mb-6">
+              <div className="mb-4 inline-block">
+                <Image
+                  src="/logo.png"
+                  alt="Company Logo"
+                  width={160}
+                  height={50}
+                  className="h-12 w-auto object-contain"
+                  priority
+                />
+              </div>
               <h2 className="login-title text-xl font-semibold">Admin sign in</h2>
               <p className="login-muted text-sm mt-1">Use your office credentials to continue.</p>
             </div>

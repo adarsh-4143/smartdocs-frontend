@@ -136,13 +136,13 @@ export default function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
         >
           {/* Logo & Title */}
           <Link href="/" className="flex items-center gap-3 overflow-hidden group">
-            <div className="w-10 h-10 rounded-xl overflow-hidden bg-[#121829] border border-[#232D42] shadow-lg shadow-[#3f5f59]/10 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+            <div className="w-10 h-10 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
               <Image
                 src="/logo.png"
-                alt="DOCGEN Logo"
+                alt="Logo"
                 width={40}
                 height={40}
-                className="w-full h-full object-cover"
+                className="w-full h-full object-contain"
               />
             </div>
 
