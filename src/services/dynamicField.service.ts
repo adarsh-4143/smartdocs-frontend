@@ -29,10 +29,12 @@ export const dynamicFieldService = {
    */
   async getDynamicFields(filters?: DynamicFieldFilters): Promise<DynamicField[]> {
     const qs = filters ? buildQuery(filters) : "";
-    const res = await apiClient.get<DynamicField[]>(
+    const res = await apiClient.get<any>(
       `${API_CONFIG.ENDPOINTS.DYNAMIC_FIELDS}${qs}`
     );
-    return res.data || [];
+    if (Array.isArray(res.data)) return res.data;
+    if (res.data?.dynamicFields && Array.isArray(res.data.dynamicFields)) return res.data.dynamicFields;
+    return [];
   },
 
   /**
@@ -51,10 +53,12 @@ export const dynamicFieldService = {
   async getFieldsByDocumentTypeId(
     documentTypeId: number | string
   ): Promise<DynamicField[]> {
-    const res = await apiClient.get<DynamicField[]>(
+    const res = await apiClient.get<any>(
       API_CONFIG.ENDPOINTS.DYNAMIC_FIELDS_BY_DOC_TYPE(documentTypeId)
     );
-    return res.data || [];
+    if (Array.isArray(res.data)) return res.data;
+    if (res.data?.dynamicFields && Array.isArray(res.data.dynamicFields)) return res.data.dynamicFields;
+    return [];
   },
 
   /**

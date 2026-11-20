@@ -12,10 +12,12 @@ export const documentTypeService = {
    * Get all active document types from backend
    */
   async getAllDocumentTypes(): Promise<DocumentType[]> {
-    const res = await apiClient.get<DocumentType[]>(
+    const res = await apiClient.get<any>(
       API_CONFIG.ENDPOINTS.DOCUMENT_TYPES
     );
-    return res.data || [];
+    if (Array.isArray(res.data)) return res.data;
+    if (res.data?.documentTypes && Array.isArray(res.data.documentTypes)) return res.data.documentTypes;
+    return [];
   },
 
   /**

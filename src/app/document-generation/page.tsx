@@ -635,7 +635,7 @@ export default function DocumentGenerationPage() {
   // Resolved data grouped panel
   // ─────────────────────────────────────────────────────────────────────────
   const renderResolvedPanel = () => {
-    if (!resolveResult || resolveResult.fields.length === 0) return null;
+    if (!resolveResult || !Array.isArray(resolveResult.fields) || resolveResult.fields.length === 0) return null;
     const groups: Record<string, ResolvedField[]> = {};
     resolveResult.fields.forEach((f) => {
       const src = f.dataSource || "MANUAL";

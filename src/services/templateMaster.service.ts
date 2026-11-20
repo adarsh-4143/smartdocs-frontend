@@ -12,10 +12,12 @@ export const templateMasterService = {
    * Get all active template master records from backend
    */
   async getAllTemplates(): Promise<TemplateMaster[]> {
-    const res = await apiClient.get<TemplateMaster[]>(
+    const res = await apiClient.get<any>(
       API_CONFIG.ENDPOINTS.TEMPLATE_MASTERS
     );
-    return res.data || [];
+    if (Array.isArray(res.data)) return res.data;
+    if (res.data?.templates && Array.isArray(res.data.templates)) return res.data.templates;
+    return [];
   },
 
   /**

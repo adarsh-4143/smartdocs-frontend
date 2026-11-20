@@ -40,10 +40,12 @@ export const generatedDocumentService = {
    */
   async getDocuments(filters?: GeneratedDocumentFilters): Promise<GeneratedDocument[]> {
     const qs = filters ? buildQuery(filters) : "";
-    const res = await apiClient.get<GeneratedDocument[]>(
+    const res = await apiClient.get<any>(
       `${API_CONFIG.ENDPOINTS.GENERATED_DOCUMENTS}${qs}`
     );
-    return res.data || [];
+    if (Array.isArray(res.data)) return res.data;
+    if (res.data?.documents && Array.isArray(res.data.documents)) return res.data.documents;
+    return [];
   },
 
   /**

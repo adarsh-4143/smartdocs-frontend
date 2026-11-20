@@ -13,8 +13,10 @@ export const companyService = {
    * Get all active companies from backend
    */
   async getAllCompanies(): Promise<Company[]> {
-    const res = await apiClient.get<Company[]>(API_CONFIG.ENDPOINTS.COMPANIES);
-    return res.data || [];
+    const res = await apiClient.get<any>(API_CONFIG.ENDPOINTS.COMPANIES);
+    if (Array.isArray(res.data)) return res.data;
+    if (res.data?.companies && Array.isArray(res.data.companies)) return res.data.companies;
+    return [];
   },
 
   /**

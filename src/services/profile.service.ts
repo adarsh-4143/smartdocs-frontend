@@ -11,8 +11,10 @@ export const profileService = {
    * Get all active profiles from backend
    */
   async getAllProfiles(): Promise<Profile[]> {
-    const res = await apiClient.get<Profile[]>(API_CONFIG.ENDPOINTS.PROFILES);
-    return res.data || [];
+    const res = await apiClient.get<any>(API_CONFIG.ENDPOINTS.PROFILES);
+    if (Array.isArray(res.data)) return res.data;
+    if (res.data?.profiles && Array.isArray(res.data.profiles)) return res.data.profiles;
+    return [];
   },
 
   /**

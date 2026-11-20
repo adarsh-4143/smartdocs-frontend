@@ -49,8 +49,10 @@ export const adminService = {
    * Get active logged in device sessions
    */
   async getSessions(): Promise<AdminSessionItem[]> {
-    const res = await apiClient.get<AdminSessionItem[]>(`${API_CONFIG.BASE_URL}/admin/sessions`);
-    return res.data || [];
+    const res = await apiClient.get<any>(`${API_CONFIG.BASE_URL}/admin/sessions`);
+    if (Array.isArray(res.data)) return res.data;
+    if (res.data?.sessions && Array.isArray(res.data.sessions)) return res.data.sessions;
+    return [];
   },
 
   /**

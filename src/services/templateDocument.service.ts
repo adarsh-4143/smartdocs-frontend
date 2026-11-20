@@ -42,10 +42,12 @@ export const templateDocumentService = {
   async getDocumentsByTemplateId(
     templateId: number | string
   ): Promise<TemplateDocument[]> {
-    const res = await apiClient.get<TemplateDocument[]>(
+    const res = await apiClient.get<any>(
       API_CONFIG.ENDPOINTS.TEMPLATE_DOCUMENTS_BY_TEMPLATE_ID(templateId)
     );
-    return res.data || [];
+    if (Array.isArray(res.data)) return res.data;
+    if (res.data?.documents && Array.isArray(res.data.documents)) return res.data.documents;
+    return [];
   },
 
   /**
