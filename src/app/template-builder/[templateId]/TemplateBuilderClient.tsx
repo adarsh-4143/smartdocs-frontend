@@ -318,7 +318,7 @@ export default function TemplateBuilderClient() {
             <div className="min-w-0">
               <p className="text-[13px] font-semibold truncate leading-tight">{template?.templateName || "Template"}</p>
               <p className="text-[9px] text-slate-500 font-mono truncate leading-tight">
-                A4 · {saveState === "saving" ? "Saving..." : saveState === "saved" ? "Saved" : "Ready"}
+                A4 {api.doc.orientation === "landscape" ? "Landscape (297×210 mm)" : "Portrait (210×297 mm)"} · {saveState === "saving" ? "Saving..." : saveState === "saved" ? "Saved" : "Ready"}
               </p>
             </div>
           </div>

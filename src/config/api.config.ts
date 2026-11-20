@@ -53,5 +53,10 @@ export const API_CONFIG = {
     GENERATED_DOCUMENT_REGENERATE: (id: number | string) => `/generated-documents/${id}/regenerate`,
     // Phase 5E — resolve-data MUST be registered before /:id to avoid Express route conflict
     GENERATED_DOCUMENT_RESOLVE_DATA: "/generated-documents/resolve-data",
+
+    // External HRMS Integration
+    EXTERNAL_HRMS_EMPLOYEES: "/external-hrms/employees",
+    EXTERNAL_HRMS_EMPLOYEE_BY_ID: (id: number | string) => `/external-hrms/employees/${id}`,
+    EXTERNAL_HRMS_FIELD_MAPPING: (id: number | string) => `/external-hrms/employees/${id}/mapping`,
   },
 };

@@ -19,6 +19,7 @@ import {
   ChevronRight,
   ShieldCheck,
   LogOut,
+  Users,
 } from "lucide-react";
 import ThemeToggle from "./ThemeToggle";
 
@@ -68,6 +69,12 @@ export default function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
       label: "Profiles",
       icon: UserCheck,
       isActive: pathname === "/profile" || pathname?.startsWith("/profile"),
+    },
+    {
+      href: "/employees",
+      label: "Employees (HRMS)",
+      icon: Users,
+      isActive: pathname === "/employees" || pathname?.startsWith("/employees"),
     },
     {
       href: "/document-type",

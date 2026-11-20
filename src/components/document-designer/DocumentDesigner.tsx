@@ -209,13 +209,34 @@ export default function DocumentDesigner({
 
         <div className="flex-1 min-w-0 min-h-0 flex flex-col bg-[#151922]">
           <div className="flex items-center justify-between px-2 py-0.5 border-b border-[#1E2638] text-[10px] text-slate-400 shrink-0">
-            <div className="flex items-center gap-0.5">
+            <div className="flex items-center gap-1.5">
               <button type="button" onClick={() => setLeftOpen((v) => !v)} className="p-1 rounded hover:bg-[#1A2236] hidden md:inline-flex" title="Pages">
                 <PanelLeft className="w-3.5 h-3.5" />
               </button>
               <button type="button" onClick={() => setRightOpen((v) => !v)} className="p-1 rounded hover:bg-[#1A2236]" title="Properties">
                 <PanelRight className="w-3.5 h-3.5" />
               </button>
+              <div className="h-3.5 w-px bg-[#1E2638] hidden sm:block" />
+              <div className="flex items-center bg-[#0F1422] border border-[#202B44] rounded p-0.5 text-[10px] font-sans">
+                <button
+                  type="button"
+                  onClick={() => api.setOrientation("portrait")}
+                  className={`px-1.5 py-0.5 rounded flex items-center gap-1 transition-colors ${api.doc.orientation === "portrait" ? "bg-indigo-600 text-white font-medium" : "text-slate-400 hover:text-white"
+                    }`}
+                  title="Switch to A4 Portrait (210 × 297 mm)"
+                >
+                  Portrait
+                </button>
+                <button
+                  type="button"
+                  onClick={() => api.setOrientation("landscape")}
+                  className={`px-1.5 py-0.5 rounded flex items-center gap-1 transition-colors ${api.doc.orientation === "landscape" ? "bg-indigo-600 text-white font-medium" : "text-slate-400 hover:text-white"
+                    }`}
+                  title="Switch to A4 Landscape (297 × 210 mm)"
+                >
+                  Landscape
+                </button>
+              </div>
             </div>
             <div className="flex items-center gap-0.5">
               <button
@@ -307,9 +328,8 @@ export default function DocumentDesigner({
                   key={tab.id}
                   type="button"
                   onClick={() => setRightTab(tab.id)}
-                  className={`flex-1 h-8 text-[10px] uppercase tracking-wider font-semibold flex items-center justify-center gap-1 ${
-                    rightTab === tab.id ? "text-white border-b-2 border-indigo-500" : "text-slate-500"
-                  }`}
+                  className={`flex-1 h-8 text-[10px] uppercase tracking-wider font-semibold flex items-center justify-center gap-1 ${rightTab === tab.id ? "text-white border-b-2 border-indigo-500" : "text-slate-500"
+                    }`}
                 >
                   <tab.icon className="w-3.5 h-3.5" />
                   {tab.label}

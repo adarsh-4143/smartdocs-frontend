@@ -12,6 +12,8 @@ import { TemplateMaster } from "@/types/templateMaster.types";
 import { TemplateContentRecord } from "@/types/templateBuilder.types";
 import { DynamicField } from "@/types/dynamicField.types";
 import { Company } from "@/types/company.types";
+import { externalHrmsService } from "@/services/externalHrms.service";
+import { ExternalEmployee } from "@/types/externalHrms.types";
 import { Profile } from "@/types/profile.types";
 import {
   GeneratedDocument,
@@ -158,6 +160,12 @@ export default function DocumentGenerationPage() {
   const [selectedCompanyId, setSelectedCompanyId] = useState<number | null>(null);
   const [selectedProfileId, setSelectedProfileId] = useState<number | null>(null);
 
+  // ── Live External HRMS State ────────────────────────────────────────────────
+  const [hrmsEmployees, setHrmsEmployees] = useState<ExternalEmployee[]>([]);
+  const [hrmsLoading, setHrmsLoading] = useState(false);
+  const [showAutoFillDrawer, setShowAutoFillDrawer] = useState(false);
+  const [autoFillEmployee, setAutoFillEmployee] = useState<ExternalEmployee | null>(null);
+
   // ── Manual field values ─────────────────────────────────────────────────────
   const [manualValues, setManualValues] = useState<Record<string, string>>({});
   const [manualErrors, setManualErrors] = useState<Record<string, string>>({});
@@ -235,13 +243,68 @@ export default function DocumentGenerationPage() {
     finally { setHistoryLoading(false); }
   }, []);
 
+  const loadHrmsEmployees = useCallback(async () => {
+    setHrmsLoading(true);
+    try {
+      const emps = await externalHrmsService.getEmployees();
+      setHrmsEmployees(emps);
+    } catch (e: any) {
+      console.warn("Failed to load HRMS employees:", e?.message);
+    } finally {
+      setHrmsLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     loadTemplates();
     loadDynamicFields();
     loadCompanies();
     loadProfiles();
     loadHistory();
-  }, [loadTemplates, loadDynamicFields, loadCompanies, loadProfiles, loadHistory]);
+    loadHrmsEmployees();
+  }, [loadTemplates, loadDynamicFields, loadCompanies, loadProfiles, loadHistory, loadHrmsEmployees]);
+
+  // Read URL query param ?employeeId=...
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const empId = params.get("employeeId");
+      if (empId) {
+        setSelectedEmployeeId(Number(empId));
+      }
+    }
+  }, []);
+
+  // Sync selected employee object
+  useEffect(() => {
+    if (selectedEmployeeId && hrmsEmployees.length > 0) {
+      const found = hrmsEmployees.find((e) => e.id === selectedEmployeeId || e.empRegId === selectedEmployeeId);
+      if (found) {
+        setAutoFillEmployee(found);
+      }
+    }
+  }, [selectedEmployeeId, hrmsEmployees]);
+
+  const handleApplyAutoFill = useCallback(() => {
+    if (!autoFillEmployee) return;
+    const mapping = autoFillEmployee.dynamicFieldMapping || {};
+    const newManuals: Record<string, string> = { ...manualValues };
+    const newPreview: Record<string, string> = { ...resolvedPreviewData };
+    let filledCount = 0;
+
+    for (const key of placeholderKeys) {
+      if (mapping[key] !== undefined && mapping[key] !== null && mapping[key] !== "") {
+        newManuals[key] = String(mapping[key]);
+        newPreview[key] = String(mapping[key]);
+        filledCount++;
+      }
+    }
+
+    setManualValues(newManuals);
+    setResolvedPreviewData(newPreview);
+    setShowAutoFillDrawer(false);
+    showToast("success", `✨ ${filledCount} placeholders auto-filled from ${autoFillEmployee.fullName}!`);
+  }, [autoFillEmployee, manualValues, resolvedPreviewData, placeholderKeys, showToast]);
 
   // ─────────────────────────────────────────────────────────────────────────
   // Template selection effect — reset all state and analyse placeholders
@@ -857,38 +920,66 @@ export default function DocumentGenerationPage() {
                       2 — Configure Data Sources
                     </h2>
 
-                    {/* EMPLOYEE selector */}
-                    {needsEmployee && (
-                      <div className="space-y-2">
-                        <SectionDivider label="Employee Source" />
-                        <label className="text-xs font-semibold text-blue-300 flex items-center gap-1.5">
-                          <Users className="w-3.5 h-3.5" /> Employee <span className="text-rose-400">*</span>
-                        </label>
+                    {/* HRMS Employee Auto-fill Selector & Live Integration */}
+                    <div className="bg-gradient-to-r from-blue-950/60 via-indigo-950/40 to-[#121828] border border-blue-500/30 rounded-xl p-3.5 space-y-2.5">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Sparkles className="w-4 h-4 text-blue-400" />
+                          <span className="text-xs font-bold text-white">Auto-fill Placeholders from HRMS</span>
+                        </div>
+                        <span className="text-[10px] font-semibold text-emerald-400 bg-emerald-950/80 px-2 py-0.5 rounded border border-emerald-500/20">
+                          {hrmsEmployees.length} Live Employees
+                        </span>
+                      </div>
+
+                      <div className="flex gap-2">
                         <select
                           value={selectedEmployeeId ?? ""}
                           onChange={(e) => {
-                            setSelectedEmployeeId(e.target.value ? Number(e.target.value) : null);
+                            const val = e.target.value ? Number(e.target.value) : null;
+                            setSelectedEmployeeId(val);
                             setSourceErrors((p) => { const n = { ...p }; delete n.EMPLOYEE; return n; });
-                            setResolveResult(null); setResolvedPreviewData({});
+                            if (val) {
+                              const found = hrmsEmployees.find((emp) => emp.id === val || emp.empRegId === val);
+                              if (found) {
+                                setAutoFillEmployee(found);
+                                setShowAutoFillDrawer(true);
+                              }
+                            }
                           }}
-                          className={`w-full bg-[#141A2C] border rounded-xl px-3 py-2 text-xs text-white focus:outline-none transition-colors cursor-pointer ${
+                          className={`flex-1 bg-[#0F1424] border rounded-xl px-3 py-2 text-xs text-white focus:outline-none transition-colors cursor-pointer ${
                             sourceErrors.EMPLOYEE ? "border-rose-500/60" : "border-[#202B44] focus:border-blue-500"
-                          }`}>
-                          <option value="">— Select Employee —</option>
-                          {MOCK_EMPLOYEES.map((emp) => (
+                          }`}
+                        >
+                          <option value="">— Select Employee to Auto-Fill —</option>
+                          {hrmsEmployees.map((emp) => (
                             <option key={emp.id} value={emp.id}>
-                              {emp.employee_name} ({emp.employee_code}) — {emp.designation}
+                              {emp.fullName} ({emp.employeeCode}) — {emp.designation}
                             </option>
                           ))}
                         </select>
-                        {sourceErrors.EMPLOYEE && (
-                          <p className="text-[10px] text-rose-400 flex items-center gap-1"><AlertCircle className="w-3 h-3" />{sourceErrors.EMPLOYEE}</p>
+
+                        {autoFillEmployee && (
+                          <button
+                            type="button"
+                            onClick={() => setShowAutoFillDrawer(true)}
+                            className="px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-medium flex items-center gap-1 transition"
+                            title="View auto-filled fields drawer"
+                          >
+                            <Eye className="w-3.5 h-3.5" /> View
+                          </button>
                         )}
-                        <p className="text-[9px] text-slate-600 font-mono">
-                          ⚠ No Employee module exists yet — using backend mock data (IDs 1, 12).
-                        </p>
                       </div>
-                    )}
+                      {sourceErrors.EMPLOYEE && (
+                        <p className="text-[10px] text-rose-400 flex items-center gap-1">
+                          <AlertCircle className="w-3 h-3" />
+                          {sourceErrors.EMPLOYEE}
+                        </p>
+                      )}
+                      <p className="text-[10px] text-blue-300/70">
+                        Selecting an employee automatically maps and fills name, designation, DOJ, contact, and statutory details into document placeholders.
+                      </p>
+                    </div>
 
                     {/* COMPANY selector */}
                     {needsCompany && (
@@ -1375,6 +1466,143 @@ export default function DocumentGenerationPage() {
           setPreviewDocId(null);
         }}
       />
+
+      {/* ─── Auto-Fill Placeholders Slide Drawer / Bottom Sheet ───────── */}
+      {showAutoFillDrawer && autoFillEmployee && (
+        <div className="fixed inset-0 z-50 flex flex-col justify-end bg-black/70 backdrop-blur-sm animate-fade-in">
+          <div className="bg-[#0E1322] border-t-2 border-blue-500/50 rounded-t-3xl shadow-2xl max-h-[85vh] flex flex-col overflow-hidden animate-slide-up">
+            {/* Drawer Drag Bar & Header */}
+            <div className="px-6 pt-4 pb-3 border-b border-[#1A243D] bg-[#11182B] flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center text-white shadow-lg shadow-blue-500/20">
+                  <Sparkles className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-sm font-bold text-white">Auto-Fill Placeholders from HRMS</h3>
+                    <span className="text-[10px] font-mono bg-blue-950 text-blue-300 border border-blue-500/30 px-2 py-0.5 rounded-full font-bold">
+                      {autoFillEmployee.employeeCode}
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Selected Employee: <strong className="text-white">{autoFillEmployee.fullName}</strong> • {autoFillEmployee.designation} ({autoFillEmployee.department})
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleApplyAutoFill}
+                  className="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-lg shadow-blue-500/25 transition cursor-pointer"
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  Apply Data to Placeholders
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setShowAutoFillDrawer(false)}
+                  className="p-1.5 rounded-lg bg-[#182136] text-slate-400 hover:text-white transition"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Drawer Body */}
+            <div className="p-6 overflow-y-auto space-y-4">
+              {/* Mapping Status Summary */}
+              <div className="bg-[#141C30] border border-[#202C4B] rounded-xl p-3 flex flex-wrap items-center justify-between gap-2 text-xs">
+                <span className="text-slate-300">
+                  Document has <strong className="text-white">{placeholderKeys.length}</strong> dynamic placeholders.
+                </span>
+                <span className="text-emerald-400 font-semibold flex items-center gap-1">
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  {
+                    placeholderKeys.filter(
+                      (k) =>
+                        autoFillEmployee.dynamicFieldMapping[k] !== undefined &&
+                        autoFillEmployee.dynamicFieldMapping[k] !== ""
+                    ).length
+                  }{" "}
+                  matched and ready to auto-fill
+                </span>
+              </div>
+
+              {/* Grid of Matched Fields */}
+              <div className="space-y-2">
+                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                  Matched Placeholders & Values
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2.5 max-h-72 overflow-y-auto pr-1">
+                  {placeholderKeys.map((key) => {
+                    const mappedValue = autoFillEmployee.dynamicFieldMapping[key];
+                    const isMatched = mappedValue !== undefined && mappedValue !== "";
+
+                    return (
+                      <div
+                        key={key}
+                        className={`p-2.5 rounded-lg border text-xs flex flex-col justify-between ${
+                          isMatched
+                            ? "bg-[#11182B] border-emerald-500/30 text-emerald-300"
+                            : "bg-[#0E1322] border-[#1C253D] text-slate-500"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-1 mb-1">
+                          <span className="font-mono text-[11px] font-semibold truncate text-slate-300">
+                            {"{{" + key + "}}"}
+                          </span>
+                          {isMatched ? (
+                            <span className="text-[10px] bg-emerald-950 text-emerald-400 px-1.5 py-0.2 rounded font-bold flex items-center gap-0.5">
+                              <CheckCircle2 className="w-2.5 h-2.5" /> Matched
+                            </span>
+                          ) : (
+                            <span className="text-[10px] bg-slate-900 text-slate-500 px-1.5 py-0.2 rounded">
+                              Manual
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-xs truncate font-medium">
+                          {isMatched ? (
+                            <span className="text-white font-mono">{mappedValue}</span>
+                          ) : (
+                            <span className="text-slate-500 italic">Not in HRMS (enter in form)</span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            {/* Drawer Footer */}
+            <div className="px-6 py-3.5 border-t border-[#1A243D] bg-[#0C111E] flex items-center justify-between gap-3">
+              <span className="text-[11px] text-slate-400">
+                Values will be populated into the document form and live preview. You can still modify any field manually.
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowAutoFillDrawer(false)}
+                  className="px-4 py-2 bg-[#161F33] hover:bg-[#1E2942] text-slate-300 rounded-xl text-xs font-medium"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleApplyAutoFill}
+                  className="px-5 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-lg shadow-blue-500/20"
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  Apply & Fill Placeholders
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Delete Confirmation Modal */}
       {deleteTarget && (

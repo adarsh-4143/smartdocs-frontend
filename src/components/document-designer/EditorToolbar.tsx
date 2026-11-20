@@ -103,6 +103,47 @@ export default function EditorToolbar({ api, onInsertImage, onInsertHeaderImage,
       </ToolButton>
       <div className="w-px h-6 bg-[#1E2638] mx-1" />
 
+      {/* Page Orientation Selector */}
+      <div className="flex items-center bg-[#141A2C] border border-[#202B44] rounded-md p-0.5 text-[11px] gap-0.5">
+        <button
+          type="button"
+          onClick={() => api.setOrientation("portrait")}
+          className={`flex items-center gap-1 px-2 py-1 rounded transition-colors ${
+            api.doc.orientation === "portrait"
+              ? "bg-indigo-600 text-white font-medium shadow-sm"
+              : "text-slate-400 hover:text-white"
+          }`}
+          title="A4 Portrait (210 × 297 mm)"
+        >
+          <Type className="w-3.5 h-3.5 rotate-0" />
+          <span className="hidden sm:inline">Portrait</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => api.setOrientation("landscape")}
+          className={`flex items-center gap-1 px-2 py-1 rounded transition-colors ${
+            api.doc.orientation === "landscape"
+              ? "bg-indigo-600 text-white font-medium shadow-sm"
+              : "text-slate-400 hover:text-white"
+          }`}
+          title="A4 Landscape (297 × 210 mm)"
+        >
+          <svg
+            className="w-3.5 h-3.5"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <rect width="18" height="13" x="3" y="5.5" rx="2" />
+          </svg>
+          <span className="hidden sm:inline">Landscape</span>
+        </button>
+      </div>
+      <div className="w-px h-6 bg-[#1E2638] mx-1" />
+
       <div className="relative" ref={insertRef}>
         <button
           type="button"

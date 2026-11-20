@@ -374,6 +374,7 @@ export function isDesignerHtml(html?: string | null): boolean {
 function normalizeDocument(data: DesignerDocument): DesignerDocument {
   return {
     ...data,
+    orientation: data.orientation || "portrait",
     pages: data.pages.map((page) => ({
       ...page,
       header: normalizeBand(page.header, 80),
