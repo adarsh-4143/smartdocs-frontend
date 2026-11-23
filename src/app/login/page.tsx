@@ -36,6 +36,10 @@ export default function AdminLoginPage() {
       setUsername(savedUsername);
       setRememberMe(true);
     }
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("expired") === "true") {
+      setError("Your session has expired. Please log in again to continue.");
+    }
   }, []);
 
   useEffect(() => {

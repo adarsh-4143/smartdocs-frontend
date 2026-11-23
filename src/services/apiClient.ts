@@ -44,6 +44,14 @@ class ApiClient {
       const json = await response.json().catch(() => null);
 
       if (!response.ok) {
+        if (response.status === 401 && typeof window !== "undefined") {
+          localStorage.removeItem("adminToken");
+          localStorage.removeItem("adminUser");
+          if (!window.location.pathname.startsWith("/login")) {
+            window.location.replace("/login?expired=true");
+          }
+        }
+
         const errorMsg =
           json?.message ||
           json?.error ||

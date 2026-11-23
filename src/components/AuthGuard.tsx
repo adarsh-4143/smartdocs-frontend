@@ -11,7 +11,23 @@ export default function AuthGuard({ children }: AuthGuardProps) {
   const [status, setStatus] = useState<"checking" | "authorized" | "redirecting">("checking");
 
   useEffect(() => {
+    const isTokenValid = (rawToken: string | null): boolean => {
+      if (!rawToken) return false;
+      try {
+        const parts = rawToken.split(".");
+        if (parts.length !== 3) return false;
+        const payload = JSON.parse(atob(parts[1]));
+        if (payload.exp && payload.exp * 1000 < Date.now()) {
+          return false;
+        }
+        return true;
+      } catch {
+        return false;
+      }
+    };
+
     const token = localStorage.getItem("adminToken");
+    const valid = isTokenValid(token);
     const currentPath = window.location.pathname;
 
     const isLoginPage =
@@ -20,16 +36,22 @@ export default function AuthGuard({ children }: AuthGuardProps) {
       currentPath.endsWith("/login/index.html");
 
     if (isLoginPage) {
-      if (token) {
-        // Already logged in, go to dashboard
+      if (valid) {
+        // Already logged in with valid token, go to dashboard
         window.location.replace("/");
       } else {
+        if (token && !valid) {
+          localStorage.removeItem("adminToken");
+          localStorage.removeItem("adminUser");
+        }
         setStatus("authorized");
       }
     } else {
-      if (!token) {
+      if (!valid) {
+        localStorage.removeItem("adminToken");
+        localStorage.removeItem("adminUser");
         setStatus("redirecting");
-        window.location.replace("/login/");
+        window.location.replace(token ? "/login?expired=true" : "/login/");
       } else {
         setStatus("authorized");
       }

@@ -96,18 +96,7 @@ export default function SettingsPage() {
       const data = await adminService.getSessions();
       setSessions(data);
     } catch (e: any) {
-      setSessions([
-        {
-          id: 1,
-          deviceType: "Desktop",
-          browser: "Chrome 122",
-          os: "Windows 11",
-          ipAddress: "127.0.0.1",
-          location: "Local Machine (Current)",
-          lastActiveAt: new Date().toISOString(),
-          isCurrent: true,
-        },
-      ]);
+      setSessions([]);
     } finally {
       setSessionsLoading(false);
     }
@@ -204,10 +193,9 @@ export default function SettingsPage() {
     try {
       await adminService.revokeSession(id);
       setSessions((prev) => prev.filter((s) => s.id !== id));
-      showToast("success", "Device session revoked.");
+      showToast("success", "Device session revoked successfully.");
     } catch (e: any) {
-      setSessions((prev) => prev.filter((s) => s.id !== id));
-      showToast("success", "Device session terminated.");
+      showToast("error", e?.message || "Failed to revoke device session.");
     } finally {
       setRevokingId(null);
     }
@@ -219,9 +207,9 @@ export default function SettingsPage() {
       await adminService.revokeOtherSessions();
       setSessions((prev) => prev.filter((s) => s.isCurrent));
       showToast("success", "Logged out from all other devices successfully!");
+      await loadSessions();
     } catch (e: any) {
-      setSessions((prev) => prev.filter((s) => s.isCurrent));
-      showToast("success", "All other device sessions terminated.");
+      showToast("error", e?.message || "Failed to log out from other devices.");
     } finally {
       setRevokingAll(false);
     }
