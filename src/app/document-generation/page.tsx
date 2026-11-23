@@ -33,6 +33,9 @@ import {
 import { parseDesignerJson } from "@/lib/documentDesigner/serialize";
 import { pageSize } from "@/lib/documentDesigner/constants";
 import PreviewModal from "@/components/document-designer/PreviewModal";
+import * as XLSX from "xlsx";
+import JSZip from "jszip";
+import { API_CONFIG } from "@/config/api.config";
 import {
   FileOutput,
   RefreshCw,
@@ -64,9 +67,20 @@ import {
   SlidersHorizontal,
   Sparkles,
   ChevronRight,
+  ChevronLeft,
   Info,
   ShieldAlert,
+  FileSpreadsheet,
+  Upload,
+  Package,
+  FileCheck,
 } from "lucide-react";
+
+export interface ExcelBatchRow {
+  rowNumber: number;
+  displayName: string;
+  data: Record<string, string>;
+}
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 const FIELD_TYPE_ICON: Record<string, React.ElementType> = {
@@ -207,6 +221,14 @@ export default function DocumentGenerationPage() {
   // ── Regenerate ──────────────────────────────────────────────────────────────
   const [regeneratingId, setRegeneratingId] = useState<number | null>(null);
 
+  // ── Excel Batch Upload State ───────────────────────────────────────────────
+  const [activeInputMode, setActiveInputMode] = useState<"hrms" | "excel">("hrms");
+  const [excelRows, setExcelRows] = useState<ExcelBatchRow[]>([]);
+  const [excelFileName, setExcelFileName] = useState<string>("");
+  const [selectedExcelRowIndex, setSelectedExcelRowIndex] = useState<number>(0);
+  const [isBatchGenerating, setIsBatchGenerating] = useState<boolean>(false);
+  const [batchProgress, setBatchProgress] = useState<{ current: number; total: number; currentName: string } | null>(null);
+
   // ─────────────────────────────────────────────────────────────────────────
   // Loaders
   // ─────────────────────────────────────────────────────────────────────────
@@ -306,6 +328,309 @@ export default function DocumentGenerationPage() {
     showToast("success", `✨ ${filledCount} placeholders auto-filled from ${autoFillEmployee.fullName}!`);
   }, [autoFillEmployee, manualValues, resolvedPreviewData, placeholderKeys, showToast]);
 
+  // ── Normalize helper for Excel column headers ─────────────────────────────
+  const normalizeKey = (str: string): string =>
+    str.toLowerCase().trim().replace(/[^a-z0-9_]/g, "_").replace(/_+/g, "_").replace(/^_|_$/g, "");
+
+  const ALIASES: Record<string, string[]> = {
+    employee_name: ["name", "full_name", "emp_name", "candidate_name", "intern_name", "student_name", "employee", "employee name", "intern name"],
+    employee_code: ["employee_id", "emp_id", "emp_code", "code", "intern_id", "roll_no", "roll_number", "id", "employee code"],
+    designation: ["role", "job_title", "position", "title"],
+    department: ["dept", "division", "team", "domain"],
+    joining_date: ["doj", "date_of_joining", "start_date", "from_date", "start"],
+    start_date: ["joining_date", "doj", "date_of_joining", "from_date", "start", "start date"],
+    end_date: ["last_date", "completion_date", "to_date", "end", "relieving_date", "end date"],
+    stipend: ["salary", "ctc", "amount", "remuneration"],
+    salary: ["stipend", "ctc", "amount"],
+    email: ["email_id", "official_email", "mail"],
+    email_id: ["email", "official_email", "mail"],
+    phone: ["phone_number", "mobile", "mobile_number", "contact_number", "contact"],
+    mobile_number: ["phone", "phone_number", "mobile", "contact_number"],
+    father_name: ["fathers_name", "father_or_husband_name", "fatherorhusbandname"],
+    fathers_name: ["father_name", "father_or_husband_name", "fatherorhusbandname"],
+    date_of_birth: ["dob", "birth_date"],
+    dob: ["date_of_birth", "birth_date"],
+    office_location: ["location", "work_location", "city"],
+    address: ["residential_address", "permanent_address"],
+  };
+
+  const applyExcelRow = useCallback((index: number, rowsList?: ExcelBatchRow[]) => {
+    const list = rowsList || excelRows;
+    if (!list || list.length === 0 || index < 0 || index >= list.length) return;
+    const row = list[index];
+    setSelectedExcelRowIndex(index);
+
+    const newManuals: Record<string, string> = { ...manualValues };
+    const newPreview: Record<string, string> = { ...resolvedPreviewData };
+
+    for (const [k, v] of Object.entries(row.data)) {
+      if (v !== undefined && v !== null && v !== "") {
+        newManuals[k] = String(v);
+        newPreview[k] = String(v);
+      }
+    }
+
+    setManualValues(newManuals);
+    setResolvedPreviewData(newPreview);
+
+    const tmpl = templates.find((t) => t.id === selectedTemplateId);
+    const candidateName =
+      row.data.employee_name ||
+      row.data.name ||
+      row.data.intern_name ||
+      row.data.emp_name ||
+      `Candidate_${index + 1}`;
+    setDocumentName(`${tmpl?.templateName || "Document"} - ${candidateName}`);
+  }, [excelRows, manualValues, resolvedPreviewData, templates, selectedTemplateId]);
+
+  const handleDownloadSampleExcel = () => {
+    if (!selectedTemplateId || placeholderKeys.length === 0) {
+      showToast("error", "No dynamic placeholders found in this template to create an Excel template.");
+      return;
+    }
+    const tmpl = templates.find((t) => t.id === selectedTemplateId);
+    const tmplName = (tmpl?.templateName || "Template").replace(/[^a-zA-Z0-9_-]/g, "_");
+
+    const headers = [...placeholderKeys];
+    const sample1: string[] = [];
+    const sample2: string[] = [];
+
+    headers.forEach((key) => {
+      const k = key.toLowerCase();
+      if (k.includes("name") && !k.includes("company") && !k.includes("father")) {
+        sample1.push("Rahul Kumar");
+        sample2.push("Priya Sharma");
+      } else if (k.includes("father")) {
+        sample1.push("Santosh Kumar");
+        sample2.push("Rajesh Sharma");
+      } else if (k.includes("code") || k.includes("id") || k.includes("number")) {
+        sample1.push("SOS0049");
+        sample2.push("SOS0050");
+      } else if (k.includes("designation") || k.includes("role") || k.includes("title")) {
+        sample1.push("Software Development Intern");
+        sample2.push("Frontend Developer Intern");
+      } else if (k.includes("dept") || k.includes("department")) {
+        sample1.push("Engineering");
+        sample2.push("Product Development");
+      } else if (k.includes("start") || k.includes("joining") || k.includes("doj") || k.includes("from")) {
+        sample1.push("2026-01-05");
+        sample2.push("2026-02-01");
+      } else if (k.includes("end") || k.includes("to") || k.includes("completion")) {
+        sample1.push("2026-06-30");
+        sample2.push("2026-07-31");
+      } else if (k.includes("dob") || k.includes("birth")) {
+        sample1.push("2002-08-19");
+        sample2.push("2003-04-12");
+      } else if (k.includes("stipend") || k.includes("salary") || k.includes("ctc") || k.includes("amount")) {
+        sample1.push("15000");
+        sample2.push("18000");
+      } else if (k.includes("email") || k.includes("mail")) {
+        sample1.push("rahul.kumar@example.com");
+        sample2.push("priya.sharma@example.com");
+      } else if (k.includes("phone") || k.includes("mobile") || k.includes("contact")) {
+        sample1.push("9876543210");
+        sample2.push("9876543211");
+      } else if (k.includes("location") || k.includes("city")) {
+        sample1.push("Noida, UP");
+        sample2.push("Bengaluru, KA");
+      } else {
+        sample1.push("Sample " + key);
+        sample2.push("Sample " + key);
+      }
+    });
+
+    const ws = XLSX.utils.aoa_to_sheet([headers, sample1, sample2]);
+    ws["!cols"] = headers.map((h) => ({ wch: Math.max(h.length + 4, 16) }));
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Candidates");
+    XLSX.writeFile(wb, `${tmplName}_Sample_Template.xlsx`);
+    showToast("success", `📥 Sample Excel template "${tmplName}_Sample_Template.xlsx" downloaded!`);
+  };
+
+  const handleExcelUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const data = new Uint8Array(evt.target?.result as ArrayBuffer);
+        const workbook = XLSX.read(data, { type: "array" });
+        const sheetName = workbook.SheetNames[0];
+        const sheet = workbook.Sheets[sheetName];
+        const rawRows = XLSX.utils.sheet_to_json<Record<string, any>>(sheet, {
+          defval: "",
+          raw: false,
+          dateNF: "yyyy-mm-dd",
+        });
+
+        if (!rawRows || rawRows.length === 0) {
+          showToast("error", "The uploaded Excel sheet contains no data rows.");
+          return;
+        }
+
+        const parsedRows: ExcelBatchRow[] = rawRows.map((rawRow, idx) => {
+          const mappedRow: Record<string, string> = {};
+          const rawKeyMap = new Map<string, any>();
+
+          for (const [k, v] of Object.entries(rawRow)) {
+            rawKeyMap.set(k.trim(), v);
+            rawKeyMap.set(normalizeKey(k), v);
+          }
+
+          // Match each template placeholder
+          for (const key of placeholderKeys) {
+            const normKey = normalizeKey(key);
+            let foundVal: any = undefined;
+
+            if (rawKeyMap.has(key)) {
+              foundVal = rawKeyMap.get(key);
+            } else if (rawKeyMap.has(normKey)) {
+              foundVal = rawKeyMap.get(normKey);
+            } else {
+              const aliases = ALIASES[key] || ALIASES[normKey] || [];
+              for (const alias of aliases) {
+                if (rawKeyMap.has(alias)) {
+                  foundVal = rawKeyMap.get(alias);
+                  break;
+                }
+                const normAlias = normalizeKey(alias);
+                if (rawKeyMap.has(normAlias)) {
+                  foundVal = rawKeyMap.get(normAlias);
+                  break;
+                }
+              }
+            }
+
+            if (foundVal !== undefined && foundVal !== null && foundVal !== "") {
+              mappedRow[key] = String(foundVal).trim();
+            }
+          }
+
+          // Also retain any raw properties
+          for (const [k, v] of Object.entries(rawRow)) {
+            const norm = normalizeKey(k);
+            if (v !== undefined && v !== null && v !== "" && !mappedRow[norm]) {
+              mappedRow[norm] = String(v).trim();
+            }
+          }
+
+          const displayName =
+            mappedRow.employee_name ||
+            mappedRow.name ||
+            mappedRow.intern_name ||
+            mappedRow.candidate_name ||
+            mappedRow.emp_name ||
+            mappedRow.full_name ||
+            `Candidate #${idx + 1}`;
+          const code = mappedRow.employee_code || mappedRow.emp_id || mappedRow.code || "";
+          const codePart = code ? ` (${code})` : "";
+          const title = mappedRow.designation || mappedRow.role || "";
+          const titlePart = title ? ` — ${title}` : "";
+          const itemLabel = `Row ${idx + 1}: ${displayName}${codePart}${titlePart}`;
+
+          return {
+            rowNumber: idx + 1,
+            displayName: itemLabel,
+            data: mappedRow,
+          };
+        });
+
+        setExcelRows(parsedRows);
+        setExcelFileName(file.name);
+        setSelectedExcelRowIndex(0);
+        applyExcelRow(0, parsedRows);
+        showToast("success", `✨ Loaded ${parsedRows.length} candidates from ${file.name}!`);
+      } catch (err: any) {
+        console.error("Failed to parse Excel file:", err);
+        showToast("error", err?.message || "Failed to parse the uploaded Excel file.");
+      }
+    };
+
+    reader.readAsArrayBuffer(file);
+    e.target.value = "";
+  };
+
+  const handleClearExcel = () => {
+    setExcelRows([]);
+    setExcelFileName("");
+    setSelectedExcelRowIndex(0);
+    showToast("success", "Excel data cleared. Returned to standard mode.");
+  };
+
+  const handleBatchGenerateZip = async () => {
+    if (!selectedTemplateId || excelRows.length === 0) return;
+    setIsBatchGenerating(true);
+    const tmpl = templates.find((t) => t.id === selectedTemplateId);
+    const zip = new JSZip();
+    let successCount = 0;
+
+    try {
+      for (let i = 0; i < excelRows.length; i++) {
+        const row = excelRows[i];
+        const candidateName =
+          row.data.employee_name ||
+          row.data.name ||
+          row.data.intern_name ||
+          row.data.emp_name ||
+          `Candidate_${i + 1}`;
+
+        setBatchProgress({
+          current: i + 1,
+          total: excelRows.length,
+          currentName: candidateName,
+        });
+
+        const effectiveData = { ...manualValues, ...row.data };
+        const docName = `${tmpl?.templateName || "Document"} - ${candidateName}`;
+
+        try {
+          const payload: any = {
+            templateId: Number(selectedTemplateId),
+            documentName: docName,
+            data: effectiveData,
+          };
+          const doc = await generatedDocumentService.generateDocument(payload);
+
+          // Fetch PDF blob from server
+          const downloadUrl = `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.GENERATED_DOCUMENT_DOWNLOAD(doc.id)}`;
+          const res = await fetch(downloadUrl);
+          if (res.ok) {
+            const blob = await res.blob();
+            const safeFileName = `${candidateName.replace(/[^a-zA-Z0-9_-]/g, "_")}_${doc.id}.pdf`;
+            zip.file(safeFileName, blob);
+            successCount++;
+          }
+        } catch (err: any) {
+          console.warn(`Failed row ${i + 1} (${candidateName}):`, err?.message);
+        }
+      }
+
+      if (successCount > 0) {
+        const zipBlob = await zip.generateAsync({ type: "blob" });
+        const objectUrl = URL.createObjectURL(zipBlob);
+        const anchor = document.createElement("a");
+        anchor.href = objectUrl;
+        const dateStr = new Date().toISOString().split("T")[0];
+        anchor.download = `${(tmpl?.templateName || "Batch").replace(/[^a-zA-Z0-9_-]/g, "_")}_Batch_${dateStr}.zip`;
+        document.body.appendChild(anchor);
+        anchor.click();
+        document.body.removeChild(anchor);
+        URL.revokeObjectURL(objectUrl);
+
+        showToast("success", `🎉 Successfully generated & downloaded ZIP with ${successCount} documents!`);
+        loadHistory();
+      } else {
+        showToast("error", "No documents could be generated.");
+      }
+    } catch (err: any) {
+      showToast("error", `Batch generation error: ${err?.message || "Unknown error"}`);
+    } finally {
+      setIsBatchGenerating(false);
+      setBatchProgress(null);
+    }
+  };
+
   // ─────────────────────────────────────────────────────────────────────────
   // Template selection effect — reset all state and analyse placeholders
   // ─────────────────────────────────────────────────────────────────────────
@@ -331,6 +656,11 @@ export default function DocumentGenerationPage() {
     setUndefinedFieldError(null);
     setLastGenerated(null);
     setGenerationError(null);
+    setExcelRows([]);
+    setExcelFileName("");
+    setSelectedExcelRowIndex(0);
+    setBatchProgress(null);
+    setActiveInputMode("hrms");
 
     setContentLoading(true);
     templateBuilderService
@@ -920,66 +1250,242 @@ export default function DocumentGenerationPage() {
                       2 — Configure Data Sources
                     </h2>
 
-                    {/* HRMS Employee Auto-fill Selector & Live Integration */}
-                    <div className="bg-gradient-to-r from-blue-950/60 via-indigo-950/40 to-[#121828] border border-blue-500/30 rounded-xl p-3.5 space-y-2.5">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <Sparkles className="w-4 h-4 text-blue-400" />
-                          <span className="text-xs font-bold text-white">Auto-fill Placeholders from HRMS</span>
+                    {/* Input Mode Selector: Single HRMS Employee vs Excel Bulk Upload */}
+                    <div className="flex items-center gap-1.5 p-1 bg-[#0F1424] border border-[#1E2638] rounded-xl text-xs font-semibold">
+                      <button
+                        type="button"
+                        onClick={() => setActiveInputMode("hrms")}
+                        className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-lg transition-all cursor-pointer ${
+                          activeInputMode === "hrms"
+                            ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/30"
+                            : "text-slate-400 hover:text-white"
+                        }`}
+                      >
+                        <Users className="w-3.5 h-3.5" />
+                        <span>Single Employee (HRMS)</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setActiveInputMode("excel")}
+                        className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-lg transition-all cursor-pointer ${
+                          activeInputMode === "excel"
+                            ? "bg-emerald-600 text-white shadow-md shadow-emerald-600/30"
+                            : "text-slate-400 hover:text-white"
+                        }`}
+                      >
+                        <FileSpreadsheet className="w-3.5 h-3.5" />
+                        <span>Excel Bulk Upload (Mail Merge)</span>
+                        {excelRows.length > 0 && (
+                          <span className="ml-1.5 px-2 py-0.5 bg-emerald-950/90 text-emerald-300 border border-emerald-400/30 rounded-full text-[10px] font-mono">
+                            {excelRows.length} rows
+                          </span>
+                        )}
+                      </button>
+                    </div>
+
+                    {/* MODE A: HRMS Employee Auto-fill Selector & Live Integration */}
+                    {activeInputMode === "hrms" && (
+                      <div className="bg-gradient-to-r from-blue-950/60 via-indigo-950/40 to-[#121828] border border-blue-500/30 rounded-xl p-3.5 space-y-2.5">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Sparkles className="w-4 h-4 text-blue-400" />
+                            <span className="text-xs font-bold text-white">Auto-fill Placeholders from HRMS</span>
+                          </div>
+                          <span className="text-[10px] font-semibold text-emerald-400 bg-emerald-950/80 px-2 py-0.5 rounded border border-emerald-500/20">
+                            {hrmsEmployees.length} Live Employees
+                          </span>
                         </div>
-                        <span className="text-[10px] font-semibold text-emerald-400 bg-emerald-950/80 px-2 py-0.5 rounded border border-emerald-500/20">
-                          {hrmsEmployees.length} Live Employees
-                        </span>
-                      </div>
 
-                      <div className="flex gap-2">
-                        <select
-                          value={selectedEmployeeId ?? ""}
-                          onChange={(e) => {
-                            const val = e.target.value ? Number(e.target.value) : null;
-                            setSelectedEmployeeId(val);
-                            setSourceErrors((p) => { const n = { ...p }; delete n.EMPLOYEE; return n; });
-                            if (val) {
-                              const found = hrmsEmployees.find((emp) => emp.id === val || emp.empRegId === val);
-                              if (found) {
-                                setAutoFillEmployee(found);
-                                setShowAutoFillDrawer(true);
+                        <div className="flex gap-2">
+                          <select
+                            value={selectedEmployeeId ?? ""}
+                            onChange={(e) => {
+                              const val = e.target.value ? Number(e.target.value) : null;
+                              setSelectedEmployeeId(val);
+                              setSourceErrors((p) => { const n = { ...p }; delete n.EMPLOYEE; return n; });
+                              if (val) {
+                                const found = hrmsEmployees.find((emp) => emp.id === val || emp.empRegId === val);
+                                if (found) {
+                                  setAutoFillEmployee(found);
+                                  setShowAutoFillDrawer(true);
+                                }
                               }
-                            }
-                          }}
-                          className={`flex-1 bg-[#0F1424] border rounded-xl px-3 py-2 text-xs text-white focus:outline-none transition-colors cursor-pointer ${
-                            sourceErrors.EMPLOYEE ? "border-rose-500/60" : "border-[#202B44] focus:border-blue-500"
-                          }`}
-                        >
-                          <option value="">— Select Employee to Auto-Fill —</option>
-                          {hrmsEmployees.map((emp) => (
-                            <option key={emp.id} value={emp.id}>
-                              {emp.fullName} ({emp.employeeCode}) — {emp.designation}
-                            </option>
-                          ))}
-                        </select>
+                            }}
+                            className={`flex-1 bg-[#0F1424] border rounded-xl px-3 py-2 text-xs text-white focus:outline-none transition-colors cursor-pointer ${
+                              sourceErrors.EMPLOYEE ? "border-rose-500/60" : "border-[#202B44] focus:border-blue-500"
+                            }`}
+                          >
+                            <option value="">— Select Employee to Auto-Fill —</option>
+                            {hrmsEmployees.map((emp) => (
+                              <option key={emp.id} value={emp.id}>
+                                {emp.fullName} ({emp.employeeCode}) — {emp.designation}
+                              </option>
+                            ))}
+                          </select>
 
-                        {autoFillEmployee && (
+                          {autoFillEmployee && (
+                            <button
+                              type="button"
+                              onClick={() => setShowAutoFillDrawer(true)}
+                              className="px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-medium flex items-center gap-1 transition cursor-pointer"
+                              title="View auto-filled fields drawer"
+                            >
+                              <Eye className="w-3.5 h-3.5" /> View
+                            </button>
+                          )}
+                        </div>
+                        {sourceErrors.EMPLOYEE && (
+                          <p className="text-[10px] text-rose-400 flex items-center gap-1">
+                            <AlertCircle className="w-3 h-3" />
+                            {sourceErrors.EMPLOYEE}
+                          </p>
+                        )}
+                        <p className="text-[10px] text-blue-300/70">
+                          Selecting an employee automatically maps and fills name, designation, DOJ, contact, and statutory details into document placeholders.
+                        </p>
+                      </div>
+                    )}
+
+                    {/* MODE B: Excel Bulk Upload / Mail Merge Workspace */}
+                    {activeInputMode === "excel" && (
+                      <div className="bg-gradient-to-r from-emerald-950/60 via-teal-950/40 to-[#121828] border border-emerald-500/30 rounded-xl p-4 space-y-4">
+                        {/* Top Bar with Title & Sample Download */}
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-emerald-500/20 pb-3">
+                          <div className="flex items-center gap-2">
+                            <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
+                            <div>
+                              <span className="text-xs font-bold text-white block">Excel Bulk Mail Merge</span>
+                              <span className="text-[10px] text-emerald-300/80">Upload .xlsx / .csv to auto-fill and batch generate documents</span>
+                            </div>
+                          </div>
+
                           <button
                             type="button"
-                            onClick={() => setShowAutoFillDrawer(true)}
-                            className="px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-medium flex items-center gap-1 transition"
-                            title="View auto-filled fields drawer"
+                            onClick={handleDownloadSampleExcel}
+                            className="px-3 py-1.5 rounded-lg bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-500/30 text-emerald-300 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer shrink-0"
+                            title="Download sample Excel template matching this document's placeholders"
                           >
-                            <Eye className="w-3.5 h-3.5" /> View
+                            <Download className="w-3.5 h-3.5" />
+                            <span>Download Sample Excel</span>
                           </button>
+                        </div>
+
+                        {/* Upload Box (if no Excel loaded yet) */}
+                        {excelRows.length === 0 ? (
+                          <label className="border-2 border-dashed border-emerald-500/30 hover:border-emerald-500/60 bg-[#0B101E]/80 rounded-xl p-5 flex flex-col items-center justify-center gap-2 cursor-pointer transition-colors group">
+                            <input
+                              type="file"
+                              accept=".xlsx, .xls, .csv"
+                              onChange={handleExcelUpload}
+                              className="hidden"
+                            />
+                            <div className="w-10 h-10 rounded-xl bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center group-hover:scale-105 transition-transform">
+                              <Upload className="w-5 h-5" />
+                            </div>
+                            <div className="text-center">
+                              <p className="text-xs font-semibold text-slate-200">
+                                Click to upload your filled Excel sheet (<span className="text-emerald-400 font-mono">.xlsx, .xls, .csv</span>)
+                              </p>
+                              <p className="text-[10px] text-slate-500 mt-0.5">
+                                Columns matching template placeholders like {placeholderKeys.slice(0, 3).map((k) => `{{${k}}}`).join(", ")} will auto-fill automatically.
+                              </p>
+                            </div>
+                          </label>
+                        ) : (
+                          /* Loaded Excel Controls */
+                          <div className="space-y-3.5">
+                            {/* File info badge & Replace/Clear */}
+                            <div className="flex items-center justify-between text-xs bg-[#090E1B] border border-emerald-500/30 rounded-xl px-3 py-2">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <FileCheck className="w-4 h-4 text-emerald-400 shrink-0" />
+                                <span className="font-semibold text-white truncate">{excelFileName}</span>
+                                <span className="text-[10px] font-mono text-emerald-400 bg-emerald-950/80 px-2 py-0.5 rounded border border-emerald-500/20 shrink-0">
+                                  {excelRows.length} Candidates Loaded
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-2 shrink-0">
+                                <label className="text-[11px] text-emerald-400 hover:text-emerald-300 font-medium cursor-pointer underline flex items-center gap-1">
+                                  <input
+                                    type="file"
+                                    accept=".xlsx, .xls, .csv"
+                                    onChange={handleExcelUpload}
+                                    className="hidden"
+                                  />
+                                  Replace File
+                                </label>
+                                <span className="text-slate-600">|</span>
+                                <button
+                                  type="button"
+                                  onClick={handleClearExcel}
+                                  className="text-[11px] text-rose-400 hover:text-rose-300 font-medium cursor-pointer flex items-center gap-1"
+                                >
+                                  <X className="w-3.5 h-3.5" /> Clear
+                                </button>
+                              </div>
+                            </div>
+
+                            {/* Row Selector Dropdown + Prev/Next buttons */}
+                            <div className="space-y-1.5">
+                              <div className="flex items-center justify-between">
+                                <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
+                                  <span>Select Candidate / Row to Auto-Fill:</span>
+                                </label>
+                                <span className="text-[10px] font-mono text-slate-400">
+                                  {selectedExcelRowIndex + 1} of {excelRows.length}
+                                </span>
+                              </div>
+
+                              <div className="flex items-center gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => applyExcelRow(Math.max(0, selectedExcelRowIndex - 1))}
+                                  disabled={selectedExcelRowIndex === 0}
+                                  className="p-2 rounded-xl bg-[#0F1424] border border-[#202B44] text-slate-300 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition cursor-pointer"
+                                  title="Previous Candidate"
+                                >
+                                  <ChevronLeft className="w-4 h-4" />
+                                </button>
+
+                                <select
+                                  value={selectedExcelRowIndex}
+                                  onChange={(e) => applyExcelRow(Number(e.target.value))}
+                                  className="flex-1 bg-[#0F1424] border border-emerald-500/40 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-400 transition-colors cursor-pointer font-medium"
+                                >
+                                  {excelRows.map((r, idx) => (
+                                    <option key={idx} value={idx}>
+                                      {r.displayName}
+                                    </option>
+                                  ))}
+                                </select>
+
+                                <button
+                                  type="button"
+                                  onClick={() => applyExcelRow(Math.min(excelRows.length - 1, selectedExcelRowIndex + 1))}
+                                  disabled={selectedExcelRowIndex >= excelRows.length - 1}
+                                  className="p-2 rounded-xl bg-[#0F1424] border border-[#202B44] text-slate-300 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition cursor-pointer"
+                                  title="Next Candidate"
+                                >
+                                  <ChevronRight className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </div>
+
+                            {/* Batch Action Buttons */}
+                            <div className="pt-2 flex flex-col sm:flex-row gap-2.5">
+                              <button
+                                type="button"
+                                onClick={handleBatchGenerateZip}
+                                disabled={isBatchGenerating || excelRows.length === 0}
+                                className="flex-1 py-2.5 px-4 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 disabled:opacity-50 transition cursor-pointer"
+                              >
+                                <Package className="w-4 h-4" />
+                                <span>⚡ Generate All ({excelRows.length}) & Download ZIP</span>
+                              </button>
+                            </div>
+                          </div>
                         )}
                       </div>
-                      {sourceErrors.EMPLOYEE && (
-                        <p className="text-[10px] text-rose-400 flex items-center gap-1">
-                          <AlertCircle className="w-3 h-3" />
-                          {sourceErrors.EMPLOYEE}
-                        </p>
-                      )}
-                      <p className="text-[10px] text-blue-300/70">
-                        Selecting an employee automatically maps and fills name, designation, DOJ, contact, and statutory details into document placeholders.
-                      </p>
-                    </div>
+                    )}
 
                     {/* COMPANY selector */}
                     {needsCompany && (
@@ -1629,6 +2135,49 @@ export default function DocumentGenerationPage() {
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Batch Generation Progress Modal */}
+      {isBatchGenerating && batchProgress && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+          <div className="bg-[#0F1424] border border-[#1E273E] w-full max-w-md rounded-2xl shadow-2xl p-6 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center">
+                <Package className="w-5 h-5 animate-pulse" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-white">Generating Batch Documents...</h3>
+                <p className="text-xs text-slate-400">
+                  Processing candidate {batchProgress.current} of {batchProgress.total}
+                </p>
+              </div>
+            </div>
+
+            {/* Progress Bar */}
+            <div className="space-y-1.5">
+              <div className="flex justify-between text-xs font-mono text-slate-400">
+                <span className="truncate max-w-[240px] text-white font-semibold">
+                  {batchProgress.currentName}
+                </span>
+                <span className="text-emerald-400 font-bold">
+                  {Math.round((batchProgress.current / batchProgress.total) * 100)}%
+                </span>
+              </div>
+              <div className="w-full bg-[#141A2C] h-2.5 rounded-full overflow-hidden border border-[#202B44]">
+                <div
+                  className="bg-gradient-to-r from-emerald-500 to-teal-400 h-full transition-all duration-300 rounded-full"
+                  style={{
+                    width: `${Math.round((batchProgress.current / batchProgress.total) * 100)}%`,
+                  }}
+                />
+              </div>
+            </div>
+
+            <p className="text-[11px] text-slate-500 italic text-center">
+              Please wait while PDFs are being generated and packaged into a ZIP archive...
+            </p>
           </div>
         </div>
       )}
